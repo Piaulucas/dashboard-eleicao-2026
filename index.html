@@ -183,7 +183,6 @@ svg{width:100%;height:auto;display:block}
 <section class="card"><h2>Evolução do percentual de votos válidos</h2>
   <div class="legend" id="legend"></div>
   <div class="chartbox" id="chartbox"><svg id="chart" viewBox="0 0 700 220" role="img" aria-label="Evolução do percentual"></svg><div class="tip" id="tip"></div></div>
-  <div class="note">Cada ponto é uma atualização capturada por este navegador (histórico guardado localmente neste dispositivo).</div>
 </section>
 <section class="card" id="statesCard"><h2>Resultado por estado <span class="note">· clique numa linha para detalhar</span></h2>
   <div style="overflow-x:auto"><table id="states"><thead></thead><tbody></tbody></table></div>
@@ -441,7 +440,7 @@ function renderChart(d){
   for(let v=lo;v<=hi;v+=5)s+=`<line x1="${L}" x2="${W-R}" y1="${y(v)}" y2="${y(v)}" stroke="var(--line)"/><text x="${L-6}" y="${y(v)+4}" text-anchor="end" font-size="11" fill="var(--muted)">${v}%</text>`;
   d.cands.forEach((c,ci)=>{
     s+=`<polyline fill="none" stroke="${c.cor}" stroke-width="2" stroke-linejoin="round" points="${h.map((p,i)=>`${x(i)},${y(p.p[ci]??0)}`).join(' ')}"/>`;
-    const last=h[h.length-1];s+=`<circle cx="${x(h.length-1)}" cy="${y(last.p[ci]??0)}" r="4" fill="${c.cor}" stroke="var(--surface)" stroke-width="2"/>`;
+    s+=h.map((p,i)=>`<circle cx="${x(i)}" cy="${y(p.p[ci]??0)}" r="${i===h.length-1?4.5:3}" fill="${c.cor}" stroke="var(--surface)" stroke-width="1.5"/>`).join('');
   });
   s+=`<text x="${L}" y="${H-6}" font-size="11" fill="var(--muted)">${h[0].hg}</text><text x="${W-R}" y="${H-6}" text-anchor="end" font-size="11" fill="var(--muted)">${h[h.length-1].hg}</text>`;
   s+=`<line id="cross" y1="${T}" y2="${H-B}" stroke="var(--muted)" stroke-dasharray="3 3" style="display:none"/><rect id="hit" x="${L}" y="0" width="${W-L-R}" height="${H}" fill="transparent"/>`;
@@ -556,7 +555,7 @@ function renderMap(){
   if(!base){svg.innerHTML='';return}
   const [a,b]=base.cands;
   const gov=k==='gov';
-  $('maptitle').textContent=gov?'· cor do partido de quem lidera em cada estado; cor mais forte = maior margem':'· vermelho (PT) ou azul (PL) conforme quem lidera; cor mais forte = maior margem';
+  $('maptitle').textContent='· cor mais forte = maior margem';
   $('maplegend').innerHTML=(gov?'':[a,b].map(c=>`<span><span class="sw" style="background:${mapCor(c)}"></span> ${c.nome} lidera</span>`).join(''))+'<span><span class="sw" style="background:var(--line)"></span> sem votos apurados</span>';
   const ufsEleicao=ELECOES[k].ufs;
   svg.innerHTML=GEO.paths.map(g=>{
