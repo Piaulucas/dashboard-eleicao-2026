@@ -270,8 +270,8 @@ const PERS={
   pt:{bg:'#c4161c',hair:'#e9e9ec',beard:'#f4f4f6',stache:'#ffffff',suit:'#1d3b73',tie:'#c4161c',skin:'#f0bd98',brow:'#b7b7bd'},
   pl:{bg:'#0b7a3b',hair:'#2b1d16',beard:'#6b5445',stache:null,suit:'#14305e',tie:'#0b7a3b',skin:'#f2c3a0',brow:'#2b1d16'},
   x:{bg:'#3b4a6b',hair:'#3a2a20',beard:null,stache:null,suit:'#444b5a',tie:'#8a93a6',skin:'#e8b894',brow:'#3a2a20'}};
-/* caricaturas valem só para os candidatos a presidente (por nome); governadores usam o boneco genérico */
-const persKey=c=>/\bLULA\b/.test(c.nome)?'pt':/\bFLAVIO\b/.test(c.nome)?'pl':'x';
+/* caricaturas valem só para Lula e Flávio na eleição presidencial (nome exato); governadores usam o boneco genérico */
+const persKey=c=>state.k!=='pres'?'x':c.nome==='LULA'?'pt':c.nome==='FLAVIO BOLSONARO'?'pl':'x';
 /* caricaturas em img/<lula|flavio>-<feliz|triste|neutro|ganhou|perdeu>.jpg; se não existirem, usa o desenho SVG */
 const IMGS={};
 const imgKey=c=>({pt:'lula',pl:'flavio'})[persKey(c)]||'';
