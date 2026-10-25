@@ -34,6 +34,12 @@ html[data-lead=pt] .m-pt,html[data-lead=pl] .m-pl{display:block}
 html:not([data-lead=pt]):not([data-lead=pl]) .m-pt{display:block}
 html[data-lead=pl] .badge13{color:#0b7a3b}html[data-lead=pl] .badge13 small{color:#1b3a8a}
 html:not([data-lead=pt]):not([data-lead=pl]) .badge13{color:#1f2a44}
+.mapwrap{max-width:560px;margin:0 auto}
+.map path{stroke:var(--surface);stroke-width:1;cursor:pointer;transition:fill-opacity .4s}
+.map path:hover{stroke:var(--ink);stroke-width:2}
+.map path.sel{stroke:var(--ink);stroke-width:3}
+.map text{font-size:10px;font-weight:700;fill:#fff;stroke:rgba(0,0,0,.5);stroke-width:2.4px;paint-order:stroke;pointer-events:none;text-anchor:middle}
+.stale{background:#ffd23f;color:#14181f;padding:2px 10px;border-radius:999px;font-weight:600}
 .leadtxt{font-size:12px;color:#fff;opacity:.9;margin-top:2px}
 .brand{display:flex;align-items:center;gap:14px;color:#fff}
 .brand svg{width:96px;height:96px;flex:none;filter:drop-shadow(0 3px 6px rgba(0,0,0,.3))}
@@ -143,6 +149,10 @@ svg{width:100%;height:auto;display:block}
 <section class="champ" id="champ"></section>
 <section class="card" id="hero"></section>
 <section class="card"><h2>Indicadores da apuração</h2><div class="grid" id="tiles"></div></section>
+<section class="card"><h2>Mapa por estado <span class="note">· cor do candidato que lidera; mais escuro = maior margem</span></h2>
+  <div class="legend" id="maplegend"></div>
+  <div class="chartbox mapwrap" id="mapbox"><svg class="map" id="map" viewBox="0 0 600 600" role="img" aria-label="Mapa do Brasil colorido pelo candidato que lidera em cada estado"></svg><div class="tip" id="maptip"></div></div>
+</section>
 <section class="card"><h2>Evolução do percentual de votos válidos</h2>
   <div class="legend" id="legend"></div>
   <div class="chartbox" id="chartbox"><svg id="chart" viewBox="0 0 700 220" role="img" aria-label="Evolução do percentual"></svg><div class="tip" id="tip"></div></div>
@@ -150,6 +160,7 @@ svg{width:100%;height:auto;display:block}
 </section>
 <section class="card" id="statesCard"><h2>Resultado por estado <span class="note">· clique numa linha para detalhar</span></h2>
   <div style="overflow-x:auto"><table id="states"><thead></thead><tbody></tbody></table></div>
+  <p class="note">O total do Brasil e os arquivos de cada estado são publicados pelo TSE em momentos diferentes, então a soma dos estados pode não bater com o total nacional enquanto a apuração avança.</p>
 </section>
 <p class="credit">Projeto de autoria de <b>Lucas Piau</b></p>
 <p class="foot">Os números são parciais e podem mudar até a totalização final; apenas o TSE divulga o resultado oficial. Projeto independente, sem vínculo com o TSE.</p>
@@ -219,15 +230,31 @@ function renderNav(){
   $('tabs').innerHTML=Object.entries(ELECOES).map(([k,e])=>`<button class="tab" data-k="${k}" aria-pressed="${k===state.k}">${e.label}</button>`).join('');
   $('ufs').innerHTML=ELECOES[state.k].ufs.map(uf=>`<button class="tab" data-uf="${uf}" aria-pressed="${uf===state.uf}">${uf==='br'?'Brasil':uf==='zz'?'Exterior':uf.toUpperCase()}</button>`).join('');
 }
+/* hora de publicação do TSE (horário de Brasília, UTC-3) */
+function tseDate(d){
+  const m=d&&/^(\d\d)\/(\d\d)\/(\d{4})$/.exec(d.dg),t=d&&/^(\d\d):(\d\d)/.exec(d.hg);
+  return m&&t?new Date(`${m[3]}-${m[2]}-${m[1]}T${d.hg}-03:00`):null;
+}
+function ago(ms){
+  const m=Math.max(0,Math.floor(ms/60000));
+  if(m<1)return 'agora há pouco';
+  if(m<60)return `${m} min`;
+  const h=Math.floor(m/60),r=m%60;
+  return h>=24?`${Math.floor(h/24)} d`:`${h}h${String(r).padStart(2,'0')}`;
+}
 function renderStatus(){
   const d=state.data[state.k+':'+state.uf];
   const cls=state.err?'dot err':state.loading?'dot off':'dot';
-  $('status').innerHTML=`<span><span class="${cls}"></span>${state.err?state.err:state.loading?'Atualizando…':'Ao vivo'}</span>
-   <span>TSE: ${d?d.dg+' '+d.hg:'—'}</span><span>Próxima consulta em ${state.next}s</span>
+  const t=tseDate(d),age=t?Date.now()-t.getTime():0,stale=age>15*60000;
+  const hhmm=x=>x.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+  $('status').innerHTML=`<span><span class="${cls}"></span>${state.err?state.err:state.loading?'Atualizando…':'Conectado ao TSE'}</span>
+   <span title="Horário em que o TSE gerou este arquivo (Brasília)">Dado do TSE: ${d?d.dg.slice(0,5)+' às '+d.hg.slice(0,5)+' (Brasília)':'—'}</span>
+   ${state.ts?`<span>Consultado às ${hhmm(state.ts)}</span>`:''}
+   ${stale?`<span class="stale">⚠ TSE sem novos dados há ${ago(age)}</span>`:''}
+   <span>Próxima consulta em ${state.next}s</span>
    <button class="tab" id="reload">Atualizar agora</button>`;
   $('reload').onclick=()=>refreshAll();
 }
-
 /* ---------- caricaturas: sorrindo (líder), chorando (atrás), neutra ---------- */
 const PERS={
   pt:{bg:'#c4161c',hair:'#e9e9ec',beard:'#f4f4f6',stache:'#ffffff',suit:'#1d3b73',tie:'#c4161c',skin:'#f0bd98',brow:'#b7b7bd'},
@@ -370,7 +397,7 @@ function render(){
   renderNav();renderStatus();
   const d=state.data[state.k+':'+state.uf];
   applyTheme(d);renderChamp(d);
-  renderHero(d);renderTiles(d);renderChart(d);renderStates();
+  renderHero(d);renderTiles(d);renderChart(d);renderMap();renderStates();
   $('statesCard').style.display=(state.k==='gov'&&false)?'none':'';
 }
 
@@ -383,6 +410,68 @@ document.addEventListener('click',e=>{
 });
 function sel(){try{sessionStorage.setItem('sel',JSON.stringify({k:state.k,uf:state.uf}))}catch{}}
 
+
+/* ---------- mapa (malha de estados do IBGE) ---------- */
+const IBGE='https://servicodados.ibge.gov.br/api/v3/malhas/paises/BR?formato=application/vnd.geo+json&qualidade=minima&intrarregiao=UF';
+const UFCOD={11:'ro',12:'ac',13:'am',14:'rr',15:'pa',16:'ap',17:'to',21:'ma',22:'pi',23:'ce',24:'rn',25:'pb',26:'pe',27:'al',28:'se',29:'ba',31:'mg',32:'es',33:'rj',35:'sp',41:'pr',42:'sc',43:'rs',50:'ms',51:'mt',52:'go',53:'df'};
+let GEO=null,geoErr=false;
+async function loadGeo(){
+  try{const c=localStorage.getItem('geo-v1');if(c){GEO=JSON.parse(c);return}}catch{}
+  try{
+    const g=await getJSON(IBGE);
+    const rings=f=>f.geometry.type==='Polygon'?f.geometry.coordinates:f.geometry.coordinates.flat();
+    let x0=1e9,x1=-1e9,y0=1e9,y1=-1e9;
+    g.features.forEach(f=>rings(f).forEach(r=>r.forEach(([x,y])=>{x0=Math.min(x0,x);x1=Math.max(x1,x);y0=Math.min(y0,y);y1=Math.max(y1,y)})));
+    const kx=Math.cos(15*Math.PI/180),sc=580/((x1-x0)*kx),W=600,H=Math.round((y1-y0)*sc+20);
+    const P=([x,y])=>[10+(x-x0)*kx*sc,10+(y1-y)*sc];
+    const paths=g.features.map(f=>{
+      let bx0=1e9,bx1=-1e9,by0=1e9,by1=-1e9;
+      const d=rings(f).map(r=>r.map((pt,i)=>{const [x,y]=P(pt);bx0=Math.min(bx0,x);bx1=Math.max(bx1,x);by0=Math.min(by0,y);by1=Math.max(by1,y);return (i?'L':'M')+x.toFixed(1)+' '+y.toFixed(1)}).join('')+'Z').join('');
+      return {uf:UFCOD[f.properties.codarea],d,cx:(bx0+bx1)/2,cy:(by0+by1)/2};
+    }).filter(x=>x.uf);
+    GEO={W,H,paths};
+    try{localStorage.setItem('geo-v1',JSON.stringify(GEO))}catch{}
+  }catch{geoErr=true}
+}
+function renderMap(){
+  const svg=$('map');
+  if(!GEO){svg.innerHTML=`<text x="300" y="300" style="fill:var(--muted);stroke:none;font-size:13px">${geoErr?'Mapa indisponível no momento':'Carregando mapa…'}</text>`;return}
+  const k=state.k;
+  const base=state.data[k+':'+state.uf]||Object.entries(state.data).find(([key,v])=>key.startsWith(k+':')&&v.cands.length)?.[1];
+  svg.setAttribute('viewBox',`0 0 ${GEO.W} ${GEO.H}`);
+  if(!base){svg.innerHTML='';return}
+  const [a,b]=base.cands;
+  $('maplegend').innerHTML=[a,b].map(c=>`<span><span class="sw" style="background:${c.cor}"></span> ${c.nome} lidera</span>`).join('')+'<span><span class="sw" style="background:var(--line)"></span> sem votos apurados</span>';
+  const ufsEleicao=ELECOES[k].ufs;
+  svg.innerHTML=GEO.paths.map(g=>{
+    const d=state.data[k+':'+g.uf],inEl=ufsEleicao.includes(g.uf);
+    const va=d?.cands.find(x=>x.id===a.id),vb=d?.cands.find(x=>x.id===b.id);
+    let fill='var(--line)',op=inEl?1:.45,tip=inEl?`${g.uf.toUpperCase()}: sem votos apurados`:`${g.uf.toUpperCase()}: sem eleição neste turno`;
+    if(va&&vb&&(va.votos+vb.votos)>0){
+      const lead=va.votos>=vb.votos?a:b,m=Math.abs(va.pct-vb.pct);
+      fill=lead.cor;op=Math.min(1,.4+m/50*.6);
+      tip=`${g.uf.toUpperCase()}: ${a.nome} ${pct(va.pct,1)} · ${b.nome} ${pct(vb.pct,1)} · ${pct(d.secPct,1)} apurado`;
+    }
+    return `<path data-uf="${g.uf}" data-tip="${tip}" d="${g.d}" fill="${fill}" fill-opacity="${op}" class="${g.uf===state.uf?'sel':''}"/>`;
+  }).join('')+GEO.paths.map(g=>`<text x="${g.cx}" y="${g.cy+3}">${g.uf.toUpperCase()}</text>`).join('');
+}
+(()=>{
+  const box=document.getElementById('mapbox');
+  box.addEventListener('mousemove',e=>{
+    const t=e.target.closest('path[data-uf]'),tip=$('maptip');
+    if(!t){tip.style.display='none';return}
+    const r=box.getBoundingClientRect();
+    tip.style.display='block';tip.textContent=t.dataset.tip;
+    tip.style.left=Math.min(Math.max(e.clientX-r.left,90),r.width-90)+'px';tip.style.top=(e.clientY-r.top)+'px';
+  });
+  box.addEventListener('mouseleave',()=>{$('maptip').style.display='none'});
+  box.addEventListener('click',e=>{
+    const t=e.target.closest('path[data-uf]');if(!t)return;
+    const uf=t.dataset.uf;
+    if(ELECOES[state.k].ufs.includes(uf)){state.uf=uf;sel();render()}
+  });
+})();
+loadGeo().then(()=>render());
 setInterval(()=>{if(state.loading)return;state.next--;if(state.next<=0)refreshAll();else renderStatus()},1000);
 refreshAll();
 </script>
