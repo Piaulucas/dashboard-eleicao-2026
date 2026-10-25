@@ -7,12 +7,12 @@
 <style>
 :root{
   --bg:#f6f7f9;--surface:#fff;--ink:#14181f;--ink2:#4a5361;--muted:#7b8494;--line:#e3e6eb;
-  --c1:#2a6fdb;--c2:#d9822b;--good:#1a8a4a;--warn:#b7791f;
+  --c1:#2a6fdb;--c2:#d9822b;--pt:#d41f2a;--pl:#1f5fd1;--good:#1a8a4a;--warn:#b7791f;
 }
 @media (prefers-color-scheme:dark){:root:not([data-theme=light]){
   --bg:#0f1218;--surface:#171b23;--ink:#eef0f4;--ink2:#b3bac7;--muted:#8791a1;--line:#272d38;
-  --c1:#5b97f2;--c2:#f0a050;--good:#4cc285;--warn:#e0b050}}
-:root[data-theme=dark]{--bg:#0f1218;--surface:#171b23;--ink:#eef0f4;--ink2:#b3bac7;--muted:#8791a1;--line:#272d38;--c1:#5b97f2;--c2:#f0a050;--good:#4cc285;--warn:#e0b050}
+  --c1:#5b97f2;--c2:#f0a050;--pt:#f0505c;--pl:#5a96f7;--good:#4cc285;--warn:#e0b050}}
+:root[data-theme=dark]{--bg:#0f1218;--surface:#171b23;--ink:#eef0f4;--ink2:#b3bac7;--muted:#8791a1;--line:#272d38;--c1:#5b97f2;--c2:#f0a050;--pt:#f0505c;--pl:#5a96f7;--good:#4cc285;--warn:#e0b050}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif}
 .wrap{max-width:1100px;margin:0 auto;padding:16px}
@@ -202,7 +202,8 @@ function parse(raw){
   for(const a of c.agr)for(const p of a.par)for(const cd of p.cand)
     cands.push({id:cd.sqcand,nome:cd.nmu,partido:p.sg,seq:num(cd.seq),votos:num(cd.vap),pct:num(cd.pvapn),eleito:cd.e==='s'});
   cands.sort((a,b)=>a.seq-b.seq);
-  cands.forEach((x,i)=>x.cor=i%2?'var(--c2)':'var(--c1)');
+  const EXTRA=['#d9822b','#7a4fd0'];let ex=0;
+  cands.forEach(x=>{x.cor=x.partido==='PT'?'var(--pt)':x.partido==='PL'?'var(--pl)':EXTRA[ex++%2]});
   const s=raw.s||{},e=raw.e||{},v=raw.v||{};
   return {cands,hg:raw.hg,dg:raw.dg,
     secTot:num(s.ts),secApur:num(s.st),secPct:num(s.pstn),
@@ -269,7 +270,8 @@ const PERS={
   pt:{bg:'#c4161c',hair:'#e9e9ec',beard:'#f4f4f6',stache:'#ffffff',suit:'#1d3b73',tie:'#c4161c',skin:'#f0bd98',brow:'#b7b7bd'},
   pl:{bg:'#0b7a3b',hair:'#2b1d16',beard:'#6b5445',stache:null,suit:'#14305e',tie:'#0b7a3b',skin:'#f2c3a0',brow:'#2b1d16'},
   x:{bg:'#3b4a6b',hair:'#3a2a20',beard:null,stache:null,suit:'#444b5a',tie:'#8a93a6',skin:'#e8b894',brow:'#3a2a20'}};
-const persKey=c=>c.partido==='PT'?'pt':c.partido==='PL'?'pl':'x';
+/* caricaturas valem só para os candidatos a presidente (por nome); governadores usam o boneco genérico */
+const persKey=c=>/\bLULA\b/.test(c.nome)?'pt':/\bFLAVIO\b/.test(c.nome)?'pl':'x';
 /* caricaturas em img/<lula|flavio>-<feliz|triste|neutro|ganhou|perdeu>.jpg; se não existirem, usa o desenho SVG */
 const IMGS={};
 const imgKey=c=>({pt:'lula',pl:'flavio'})[persKey(c)]||'';
@@ -412,14 +414,15 @@ function renderStates(){
     const pa=val(r,'a'),pb=val(r,'b'),dif=val(r,'dif');
     const sem=!r.d.validos;
     return `<tr data-uf="${r.uf}"><td><b>${r.uf==='zz'?'Exterior':r.uf.toUpperCase()}</b>${sem?'':`<span class="mini"><i style="width:${pa}%;background:${a.cor}"></i><i style="width:${pb}%;background:${b.cor}"></i></span>`}</td>
-     <td>${sem?'—':pct(pa,1)}</td><td>${sem?'—':pct(pb,1)}</td><td>${sem?'—':(dif>=0?'+':'−')+fmt(Math.abs(dif))}</td><td>${fmt(r.d.validos)}</td><td>${pct(r.d.secPct,1)}</td></tr>`}).join('');
+     <td${!sem&&pa>=pb?` style="color:${a.cor};font-weight:700"`:''}>${sem?'—':pct(pa,1)}</td><td${!sem&&pb>pa?` style="color:${b.cor};font-weight:700"`:''}>${sem?'—':pct(pb,1)}</td><td${sem?'':` style="color:${dif>=0?a.cor:b.cor};font-weight:600"`}>${sem?'—':(dif>=0?'+':'−')+fmt(Math.abs(dif))}</td><td>${fmt(r.d.validos)}</td><td>${pct(r.d.secPct,1)}</td></tr>`}).join('');
 }
 function applyTheme(d){
   const l=d&&d.cands.length&&d.cands.reduce((a,b)=>b.votos>a.votos?b:a);
   const tie=l&&d.cands.filter(c=>c.votos===l.votos).length>1;
   const key=!l||!l.votos||tie?'x':l.partido==='PT'?'pt':l.partido==='PL'?'pl':'x';
   document.documentElement.dataset.lead=key;
-  $('badge').firstChild.textContent=key==='pl'?'22':key==='pt'?'13':'—';
+  $('badge').firstChild.textContent=key==='pl'?'22':key==='pt'?'13':'';
+  $('badge').style.display=key==='x'?'none':'';
   $('leadtxt').textContent=key==='x'?(l&&l.votos&&!tie?'Liderança: '+l.nome:'Aguardando liderança'):'Liderando agora: '+l.nome;
 }
 function render(){
@@ -462,8 +465,8 @@ async function loadGeo(){
     try{localStorage.setItem('geo-v1',JSON.stringify(GEO))}catch{}
   }catch{geoErr=true}
 }
-/* cores do mapa por partido: PT vermelho, PL azul (demais usam a cor do candidato) */
-const mapCor=c=>c.partido==='PT'?'#d41f2a':c.partido==='PL'?'#1f5fd1':c.cor;
+/* cor do mapa = cor do candidato (PT vermelho, PL azul) */
+const mapCor=c=>c.cor;
 function renderMap(){
   const svg=$('map');
   if(!GEO){svg.innerHTML=`<text x="300" y="300" style="fill:var(--muted);stroke:none;font-size:13px">${geoErr?'Mapa indisponível no momento':'Carregando mapa…'}</text>`;return}
