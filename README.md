@@ -19,7 +19,8 @@ Dashboard interativo que acompanha a apuração das eleições em tempo real, le
 
   ![Mapa por estado](docs/03-mapa.jpg)
 
-- **Tabela por estado** ordenável, **gráfico de evolução** do percentual e indicadores (válidos, brancos, nulos, comparecimento, abstenção).
+- **Resultado por região** (Norte, Nordeste, Centro-Oeste, Sudeste e Sul): total de cada região com percentual, margem e apuração; clicar numa região filtra a tabela. Nos governos, a tabela também é agrupada por região.
+- **Tabela por estado** agrupada por região, ordenável, **gráfico de evolução** do percentual e indicadores (válidos, brancos, nulos, comparecimento, abstenção).
 - **Quadro de campeão** acionado pela marcação oficial do TSE (candidato com status "Eleito", que pode vir antes dos 100% apurados) ou, na falta dela, com **100% das seções totalizadas**. Na Presidência: tela cheia com confete e um card com vencedor e derrotado. Nos governos: um aviso discreto no topo ("Governadora eleita · DF"), mesmo com outra aba aberta, e o card no estado. O dashboard **não faz projeção própria**; só reflete o que o TSE declara.
 
   ![Quadro de campeão (simulação)](docs/04-quadro-campeao-simulacao.jpg)

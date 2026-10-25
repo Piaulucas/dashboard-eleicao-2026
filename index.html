@@ -85,6 +85,15 @@ th,td{padding:8px 6px;text-align:right;border-bottom:1px solid var(--line)}
 th:first-child,td:first-child{text-align:left}
 th{color:var(--muted);font-weight:500;font-size:12px;cursor:pointer;user-select:none;white-space:nowrap}
 tbody tr{cursor:pointer}tbody tr:hover{background:var(--bg)}
+tr.grp td{background:var(--bg);font-size:12px;font-weight:700;color:var(--ink2);text-align:left;padding:8px 6px;cursor:default;letter-spacing:.3px;text-transform:uppercase}
+.regs{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px}
+.regcard{font:inherit;color:inherit;text-align:left;background:transparent;border:1px solid var(--line);border-radius:10px;padding:10px 12px;cursor:pointer}
+.regcard:hover{border-color:var(--muted)}
+.regcard.on{border-color:var(--ink);box-shadow:0 0 0 2px var(--ink) inset}
+.regcard .rn{font-size:12px;letter-spacing:.8px;text-transform:uppercase;color:var(--muted);font-weight:700}
+.regcard .rp{display:flex;justify-content:space-between;font-size:22px;font-weight:700;font-variant-numeric:tabular-nums;margin:2px 0 6px}
+.split.sm{height:8px;margin:0 0 6px}.split.sm div{border-radius:0}.split.sm div:first-child{border-radius:4px 0 0 4px}.split.sm div:last-child{border-radius:0 4px 4px 0}
+#regfiltro{margin:0 0 8px}
 .mini{display:inline-flex;width:90px;height:8px;gap:1px;vertical-align:middle;margin-left:8px}
 .mini i{display:block;height:100%}
 .chartbox{position:relative}
@@ -149,6 +158,7 @@ svg{width:100%;height:auto;display:block}
 @media(max-width:600px){.hero{grid-template-columns:1fr}.cand.r{text-align:right}.av{width:72px;height:72px}}
 @media(max-width:600px){.cand .pct{font-size:32px}.mini{display:none}#states th,#states td{padding:8px 3px;font-size:13px}#states:not(.govt) th:nth-child(5),#states:not(.govt) td:nth-child(5){display:none}.card{padding:12px}.wrap{padding:12px}}
 @media(max-width:600px){
+  .regs{grid-template-columns:1fr 1fr}.regcard .rp{font-size:18px}
   header{margin-bottom:6px;gap:8px}
   .brand{gap:10px;width:100%}
   .brand>div:nth-child(1){flex:1;min-width:0}
@@ -186,6 +196,7 @@ svg{width:100%;height:auto;display:block}
 <section class="champ" id="champ"></section>
 <section class="card" id="hero"></section>
 <section class="card"><h2>Indicadores da apuração</h2><div class="grid" id="tiles"></div></section>
+<section class="card" id="regCard"><h2>Resultado por região <span class="note">· clique numa região para filtrar a tabela de estados</span></h2><div class="regs" id="regs"></div></section>
 <section class="card"><h2>Mapa por estado <span class="note" id="maptitle"></span></h2>
   <div class="legend" id="maplegend"></div>
   <div class="chartbox mapwrap" id="mapbox"><svg class="map" id="map" viewBox="0 0 600 600" role="img" aria-label="Mapa do Brasil colorido pelo candidato que lidera em cada estado"></svg><div class="tip" id="maptip"></div></div>
@@ -194,7 +205,8 @@ svg{width:100%;height:auto;display:block}
   <div class="legend" id="legend"></div>
   <div class="chartbox" id="chartbox"><svg id="chart" viewBox="0 0 700 220" role="img" aria-label="Evolução do percentual"></svg><div class="tip" id="tip"></div></div>
 </section>
-<section class="card" id="statesCard"><h2>Resultado por estado <span class="note">· clique numa linha para detalhar</span></h2>
+<section class="card" id="statesCard"><h2>Resultado por estado <span class="note">· agrupado por região · clique numa linha para detalhar</span></h2>
+  <div class="note" id="regfiltro"></div>
   <div style="overflow-x:auto"><table id="states"><thead></thead><tbody></tbody></table></div>
   <p class="note">O total do Brasil e os arquivos de cada estado são publicados pelo TSE em momentos diferentes, então a soma dos estados pode não bater com o total nacional enquanto a apuração avança.</p>
 </section>
@@ -208,6 +220,15 @@ svg{width:100%;height:auto;display:block}
 const BASE='https://resultados.tse.jus.br/oficial/ele2026';
 const POLL=60; // a API tem cache de ~50s
 const UFS=['ac','al','ap','am','ba','ce','df','es','go','ma','mt','ms','mg','pa','pb','pr','pe','pi','rj','rn','rs','ro','rr','sc','sp','se','to'];
+/* regiões do país (IBGE); "Exterior" fica à parte */
+const REGIOES=[['Norte',['ac','ap','am','pa','ro','rr','to']],['Nordeste',['al','ba','ce','ma','pb','pe','pi','rn','se']],['Centro-Oeste',['df','go','mt','ms']],['Sudeste',['es','mg','rj','sp']],['Sul',['pr','rs','sc']],['Exterior',['zz']]];
+const regiaoDe=uf=>(REGIOES.find(([,l])=>l.includes(uf))||['Outros'])[0];
+const agruparRegioes=rows=>REGIOES.map(([n])=>[n,rows.filter(r=>regiaoDe(r.uf)===n)]).filter(([,r])=>r.length);
+function somaRegiao(rows,a,b){
+  const v=c=>rows.reduce((t,r)=>t+(r.d.cands.find(x=>x.id===c.id)?.votos||0),0);
+  const va=v(a),vb=v(b),tot=va+vb,sa=rows.reduce((t,r)=>t+r.d.secApur,0),st=rows.reduce((t,r)=>t+r.d.secTot,0);
+  return {va,vb,tot,pa:tot?va/tot*100:0,pb:tot?vb/tot*100:0,sec:st?sa/st*100:0};
+}
 const GOV_UFS=['ac','am','df','es','rn','to']; // UFs com 2º turno de governador
 const ELECOES={
   pres:{label:'Presidente',ele:6258,cargo:1,ufs:['br',...UFS,'zz']},
@@ -497,6 +518,20 @@ function renderChart(d){
   };
   hit.onmouseleave=()=>{cross.style.display='none';tip.style.display='none'};
 }
+function renderRegioes(){
+  const card=$('regCard');
+  if(state.k!=='pres'){card.style.display='none';return}
+  const rows=ELECOES.pres.ufs.filter(u=>u!=='br').map(uf=>({uf,d:state.data['pres:'+uf]})).filter(r=>r.d);
+  if(!rows.length){card.style.display='none';return}
+  card.style.display='';
+  const [a,b]=rows[0].d.cands,sn=c=>c.nome.split(' ')[0];
+  $('regs').innerHTML=REGIOES.filter(([n])=>n!=='Exterior').map(([n])=>{
+    const t=somaRegiao(rows.filter(r=>regiaoDe(r.uf)===n),a,b),lead=t.va>=t.vb?a:b,on=state.region===n;
+    return `<button class="regcard${on?' on':''}" data-reg="${n}" aria-pressed="${on}"><div class="rn">${n}</div>`+(t.tot
+      ?`<div class="rp"><span style="color:${a.cor}">${pct(t.pa,1)}</span><span style="color:${b.cor}">${pct(t.pb,1)}</span></div><div class="split sm"><div style="flex:${t.pa};background:${a.cor}"></div><div style="flex:${t.pb};background:${b.cor}"></div></div><div class="note">${sn(lead)} +${pct(Math.abs(t.pa-t.pb),1).replace('%','')} pts · apurado ${pct(t.sec,1)}</div>`
+      :'<div class="note">sem votos apurados</div>')+'</button>';
+  }).join('');
+}
 function renderStatesGov(ufs){
   const k=state.k,t=$('states');t.classList.add('govt');
   const rows=ufs.map(uf=>{
@@ -508,16 +543,18 @@ function renderStatesGov(ufs){
   rows.sort((r1,r2)=>{const a=r1.v[col],b=r2.v[col];return (typeof a==='string'?a.localeCompare(b):a-b)*dir});
   const th=(c,l)=>`<th data-col="${c}">${l}${col===c?(dir>0?' ▲':' ▼'):''}</th>`;
   t.tHead.innerHTML=`<tr>${th('uf','UF')}${th('lider','Líder')}${th('pct','%')}${th('dif','Diferença')}${th('sec','Apurado')}</tr>`;
-  t.tBodies[0].innerHTML=rows.map(r=>`<tr data-uf="${r.uf}"><td><b>${r.uf.toUpperCase()}</b></td>
+  const linha=r=>`<tr data-uf="${r.uf}"><td><b>${r.uf.toUpperCase()}</b></td>
     <td style="text-align:left;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;${r.sem?'':`color:${r.l.cor};font-weight:700`}">${r.sem?'—':`${r.l.nome} <span class="note">${r.l.partido}</span>`}</td>
-    <td>${r.sem?'—':pct(r.l.pct,1)}</td><td>${r.sem?'—':'+'+fmt(r.l.votos-r.sg.votos)}</td><td>${pct(r.d.secPct,1)}</td></tr>`).join('');
+    <td>${r.sem?'—':pct(r.l.pct,1)}</td><td>${r.sem?'—':'+'+fmt(r.l.votos-r.sg.votos)}</td><td>${pct(r.d.secPct,1)}</td></tr>`;
+  t.tBodies[0].innerHTML=agruparRegioes(rows).map(([n,rs])=>`<tr class="grp"><td colspan="5">${n}</td></tr>`+rs.map(linha).join('')).join('');
 }
 function renderStates(){
   const k=state.k,ufs=ELECOES[k].ufs.filter(u=>u!=='br');
-  if(k==='gov'){renderStatesGov(ufs);return}
+  if(k==='gov'){$('regfiltro').innerHTML='';renderStatesGov(ufs);return}
   $('states').classList.remove('govt');
-  const rows=ufs.map(uf=>({uf,d:state.data[k+':'+uf]})).filter(r=>r.d);
-  const base=rows[0]?.d||state.data[k+':'+state.uf];
+  const todas=ufs.map(uf=>({uf,d:state.data[k+':'+uf]})).filter(r=>r.d);
+  const rows=todas.filter(r=>!state.region||regiaoDe(r.uf)===state.region);
+  const base=todas[0]?.d||state.data[k+':'+state.uf];
   if(!base){$('states').tHead.innerHTML='';$('states').tBodies[0].innerHTML='';return}
   const [a,b]=base.cands;
   const val=(r,c)=>({uf:r.uf,a:r.d.cands.find(x=>x.id===a.id)?.pct??0,b:r.d.cands.find(x=>x.id===b.id)?.pct??0,sec:r.d.secPct,dif:(r.d.cands.find(x=>x.id===a.id)?.votos??0)-(r.d.cands.find(x=>x.id===b.id)?.votos??0),votos:r.d.validos})[c];
@@ -525,11 +562,16 @@ function renderStates(){
   rows.sort((r1,r2)=>{const v1=val(r1,col),v2=val(r2,col);return (typeof v1==='string'?v1.localeCompare(v2):v1-v2)*dir});
   const th=(c,l)=>`<th data-col="${c}">${l}${col===c?(dir>0?' ▲':' ▼'):''}</th>`;
   $('states').tHead.innerHTML=`<tr>${th('uf','UF')}${th('a',a.nome.split(' ').pop())}${th('b',b.nome.split(' ').pop())}${th('dif','Diferença')}${th('votos','Válidos')}${th('sec','Apurado')}</tr>`;
-  $('states').tBodies[0].innerHTML=rows.map(r=>{
+  const linha=r=>{
     const pa=val(r,'a'),pb=val(r,'b'),dif=val(r,'dif');
     const sem=!r.d.validos;
     return `<tr data-uf="${r.uf}"><td><b>${r.uf==='zz'?'Exterior':r.uf.toUpperCase()}</b>${sem?'':`<span class="mini"><i style="width:${pa}%;background:${a.cor}"></i><i style="width:${pb}%;background:${b.cor}"></i></span>`}</td>
-     <td${!sem&&pa>=pb?` style="color:${a.cor};font-weight:700"`:''}>${sem?'—':pct(pa,1)}</td><td${!sem&&pb>pa?` style="color:${b.cor};font-weight:700"`:''}>${sem?'—':pct(pb,1)}</td><td${sem?'':` style="color:${dif>=0?a.cor:b.cor};font-weight:600"`}>${sem?'—':(dif>=0?'+':'−')+fmt(Math.abs(dif))}</td><td>${fmt(r.d.validos)}</td><td>${pct(r.d.secPct,1)}</td></tr>`}).join('');
+     <td${!sem&&pa>=pb?` style="color:${a.cor};font-weight:700"`:''}>${sem?'—':pct(pa,1)}</td><td${!sem&&pb>pa?` style="color:${b.cor};font-weight:700"`:''}>${sem?'—':pct(pb,1)}</td><td${sem?'':` style="color:${dif>=0?a.cor:b.cor};font-weight:600"`}>${sem?'—':(dif>=0?'+':'−')+fmt(Math.abs(dif))}</td><td>${fmt(r.d.validos)}</td><td>${pct(r.d.secPct,1)}</td></tr>`};
+  $('regfiltro').innerHTML=state.region?`Mostrando só a região <b>${state.region}</b> <button class="tab" id="limpar">ver todas</button>`:'';
+  $('states').tBodies[0].innerHTML=agruparRegioes(rows).map(([n,rs])=>{
+    const t=somaRegiao(rs,a,b),sn=c=>c.nome.split(' ')[0];
+    return `<tr class="grp"><td colspan="6">${n}${t.tot?` · <span style="color:${a.cor}">${sn(a)} ${pct(t.pa,1)}</span> × <span style="color:${b.cor}">${sn(b)} ${pct(t.pb,1)}</span> · apurado ${pct(t.sec,1)}`:''}</td></tr>`+rs.map(linha).join('');
+  }).join('');
 }
 function applyTheme(d){
   const l=d&&d.cands.length&&d.cands.reduce((a,b)=>b.votos>a.votos?b:a);
@@ -550,7 +592,7 @@ function render(){
   renderNav();renderStatus();
   const d=state.data[state.k+':'+state.uf];
   applyTheme(d);renderChamp(d);
-  renderHero(d);renderTiles(d);renderChart(d);renderMap();renderStates();
+  renderHero(d);renderTiles(d);renderChart(d);renderRegioes();renderMap();renderStates();
   $('statesCard').style.display=(state.k==='gov'&&false)?'none':'';
 }
 
@@ -560,6 +602,13 @@ document.addEventListener('click',e=>{
   else if(t.tagName==='BUTTON'&&t.dataset.uf){state.uf=t.dataset.uf;sel();render()}
   else if(t.tagName==='TR'){state.uf=t.dataset.uf;sel();render();window.scrollTo({top:0,behavior:'smooth'})}
   else if(t.dataset.col){const c=t.dataset.col;state.sort=state.sort.col===c?{col:c,dir:-state.sort.dir}:{col:c,dir:c==='uf'?1:-1};renderStates()}
+});
+document.addEventListener('click',e=>{
+  if(e.target.id==='limpar'){state.region=null;renderRegioes();renderStates();return}
+  const t=e.target.closest('.regcard');if(!t)return;
+  const n=t.dataset.reg;state.region=state.region===n?null:n;
+  renderRegioes();renderStates();
+  if(state.region)$('statesCard').scrollIntoView({behavior:'smooth',block:'start'});
 });
 function sel(){try{sessionStorage.setItem('sel',JSON.stringify({k:state.k,uf:state.uf}))}catch{}}
 
