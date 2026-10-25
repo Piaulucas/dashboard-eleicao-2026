@@ -115,11 +115,12 @@ svg{width:100%;height:auto;display:block}
 .splash button{margin-top:26px;font:inherit;font-weight:600;padding:12px 26px;border-radius:999px;border:3px solid #ffd23f;background:#fff;color:#14181f;cursor:pointer}
 .splash .face{width:clamp(110px,18vw,200px);height:clamp(110px,18vw,200px);margin-bottom:6px}
 .splash .face .av{width:100%;height:100%}
+.splash>*:not(.conf){position:relative;z-index:1}
 .conf{position:absolute;inset:0;pointer-events:none;overflow:hidden}
 .conf i{position:absolute;top:-20px;width:10px;height:16px;opacity:.9;animation:fall linear infinite}
 @keyframes fall{to{transform:translateY(110vh) rotate(720deg)}}
 @media(max-width:600px){.hero{grid-template-columns:1fr}.cand.r{text-align:right}.av{width:72px;height:72px}}
-@media(max-width:600px){.cand .pct{font-size:32px}.mini{display:none}}
+@media(max-width:600px){.cand .pct{font-size:32px}.mini{display:none}#states th,#states td{padding:8px 3px;font-size:13px}#states th:nth-child(5),#states td:nth-child(5){display:none}.card{padding:12px}.wrap{padding:12px}}
 </style>
 </head>
 <body>
@@ -314,9 +315,11 @@ function renderTiles(d){
 }
 function renderChart(d){
   const svg=$('chart'),h=history();
-  if(!d||h.length<2){svg.innerHTML=`<text x="350" y="110" text-anchor="middle" fill="var(--muted)" font-size="13">Aguardando mais atualizações para traçar a evolução…</text>`;$('legend').innerHTML='';return}
+  const CW=Math.max(300,Math.round($('chartbox').clientWidth||700)),CH=CW<500?200:220;
+  svg.setAttribute('viewBox',`0 0 ${CW} ${CH}`);
+  if(!d||h.length<2){svg.innerHTML=`<text x="${CW/2}" y="${CH/2}" text-anchor="middle" fill="var(--muted)" font-size="13">Aguardando mais atualizações para traçar a evolução…</text>`;$('legend').innerHTML='';return}
   $('legend').innerHTML=d.cands.map(c=>`<span><span class="sw" style="background:${c.cor}"></span> ${c.nome}</span>`).join('');
-  const W=700,H=220,L=40,R=12,T=10,B=24;
+  const W=CW,H=CH,L=40,R=12,T=10,B=24;
   const all=h.flatMap(x=>x.p);let lo=Math.floor(Math.min(...all)/5)*5-5,hi=Math.ceil(Math.max(...all)/5)*5+5;lo=Math.max(0,lo);hi=Math.min(100,hi);
   const x=i=>L+(W-L-R)*(h.length===1?0:i/(h.length-1)),y=v=>T+(H-T-B)*(1-(v-lo)/(hi-lo));
   let s='';
