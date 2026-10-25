@@ -95,6 +95,7 @@ svg{width:100%;height:auto;display:block}
 .cand{display:flex;align-items:center;gap:12px}
 .cand.r{flex-direction:row-reverse}
 .cand .info{min-width:0}
+.av.photo{object-fit:cover;object-position:center top;background:#fff}
 .av{width:100px;height:100px;flex:none;border-radius:50%;box-shadow:0 2px 8px rgba(0,0,0,.25)}
 .av.happy{animation:bounce 1s ease-in-out infinite}
 @keyframes bounce{50%{transform:translateY(-5px)}}
@@ -113,15 +114,23 @@ svg{width:100%;height:auto;display:block}
 .champ .stats span{background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.35);border-radius:999px;padding:6px 14px;font-size:14px}
 .champ .trophy{font-size:54px;line-height:1}
 .splash{position:fixed;inset:0;z-index:50;display:none;align-items:center;justify-content:center;flex-direction:column;text-align:center;color:#fff;padding:24px;background:var(--page)}
-.splash.on{display:flex}
-.splash .trophy{font-size:clamp(70px,14vw,140px);line-height:1;animation:bounce 1.2s ease-in-out infinite}
+.splash.on{display:flex;overflow-y:auto;justify-content:safe center}
+.splash .trophy{font-size:clamp(44px,10vh,110px);line-height:1;animation:bounce 1.2s ease-in-out infinite}
 .splash .t1{letter-spacing:8px;font-weight:700;color:#ffd23f;font-size:clamp(14px,3vw,24px);margin-top:10px}
-.splash .nm{font-size:clamp(44px,11vw,150px);font-weight:900;line-height:1;text-transform:uppercase;margin:10px 0;text-shadow:0 5px 0 rgba(0,0,0,.25)}
+.splash .nm{font-size:clamp(40px,min(11vw,16vh),150px);font-weight:900;line-height:1;text-transform:uppercase;margin:10px 0;text-shadow:0 5px 0 rgba(0,0,0,.25)}
 .splash .t2{font-size:clamp(16px,3vw,26px)}
 .splash button{margin-top:26px;font:inherit;font-weight:600;padding:12px 26px;border-radius:999px;border:3px solid #ffd23f;background:#fff;color:#14181f;cursor:pointer}
 .splash .face{width:clamp(110px,18vw,200px);height:clamp(110px,18vw,200px);margin-bottom:6px}
 .splash .face .av{width:100%;height:100%}
 .splash>*:not(.conf){position:relative;z-index:1}
+.duo{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:16px auto 6px;max-width:660px}
+.duo figure{margin:0;background:#fff;border-radius:14px;padding:8px;color:#14181f}
+.duo .win{border:4px solid #ffd23f;box-shadow:0 0 24px rgba(255,210,63,.65)}
+.duo .lose{border:3px solid rgba(255,255,255,.4)}
+.duo img{width:100%;height:auto;max-height:280px;object-fit:contain;display:block}
+.duo svg{width:100%;max-width:140px;display:block;margin:0 auto}
+.duo figcaption{font-weight:700;font-size:14px;margin-top:4px}
+.bigscene{height:clamp(110px,26vh,300px);width:auto;border-radius:16px;background:#fff;margin-bottom:6px;border:4px solid #ffd23f}
 .conf{position:absolute;inset:0;pointer-events:none;overflow:hidden}
 .conf i{position:absolute;top:-20px;width:10px;height:16px;opacity:.9;animation:fall linear infinite}
 @keyframes fall{to{transform:translateY(110vh) rotate(720deg)}}
@@ -163,7 +172,7 @@ svg{width:100%;height:auto;display:block}
   <p class="note">O total do Brasil e os arquivos de cada estado são publicados pelo TSE em momentos diferentes, então a soma dos estados pode não bater com o total nacional enquanto a apuração avança.</p>
 </section>
 <p class="credit">Projeto de autoria de <b>Lucas Piau</b></p>
-<p class="foot">Os números são parciais e podem mudar até a totalização final; apenas o TSE divulga o resultado oficial. Projeto independente, sem vínculo com o TSE.</p>
+<p class="foot">Os números são parciais e podem mudar até a totalização final; apenas o TSE divulga o resultado oficial. Projeto independente, sem vínculo com o TSE. Caricaturas geradas com IA.</p>
 </div>
 <div class="splash" id="splash" role="dialog" aria-modal="true" aria-label="Vencedor da eleição"></div>
 
@@ -261,7 +270,16 @@ const PERS={
   pl:{bg:'#0b7a3b',hair:'#2b1d16',beard:'#6b5445',stache:null,suit:'#14305e',tie:'#0b7a3b',skin:'#f2c3a0',brow:'#2b1d16'},
   x:{bg:'#3b4a6b',hair:'#3a2a20',beard:null,stache:null,suit:'#444b5a',tie:'#8a93a6',skin:'#e8b894',brow:'#3a2a20'}};
 const persKey=c=>c.partido==='PT'?'pt':c.partido==='PL'?'pl':'x';
+/* caricaturas em img/<lula|flavio>-<feliz|triste|neutro|ganhou|perdeu>.jpg; se não existirem, usa o desenho SVG */
+const IMGS={};
+const imgKey=c=>({pt:'lula',pl:'flavio'})[persKey(c)]||'';
+['lula','flavio'].forEach(k=>['feliz','triste','neutro','ganhou','perdeu'].forEach(m=>{
+  const u=`img/${k}-${m}.jpg`,im=new Image();
+  im.onload=()=>{IMGS[k+m]=u;if(typeof render==='function')render()};im.src=u;
+}));
 function avatar(c,mood){
+  const pk=persKey(c),im=IMGS[imgKey(c)+(mood==='sad'?'triste':mood==='happy'?'feliz':'neutro')];
+  if(im&&pk!=='x')return `<img class="av ${mood} photo" src="${im}" alt="${c.nome} ${mood==='sad'?'chorando':'sorrindo'}">`;
   const P=PERS[persKey(c)],happy=mood==='happy',sad=mood==='sad';
   const bg=sad?'#8c9db3':happy?P.bg:'#5d6b86';
   let o=`<svg class="av ${mood}" viewBox="0 0 120 120" role="img" aria-label="${c.nome} ${happy?'sorrindo':sad?'chorando':''}"><circle cx="60" cy="60" r="58" fill="${bg}"/>`;
@@ -314,6 +332,14 @@ function renderHero(d){
 }
 /* ---------- vitória: tela cheia + quadro destacado ---------- */
 let splashSeen={};
+function scene(c,kind){
+  const im=IMGS[imgKey(c)+kind];
+  return im&&persKey(c)!=='x'?`<img class="scene" src="${im}" alt="${c.nome} ${kind==='ganhou'?'vencedor, com apoiadores':'derrotado, consolado por apoiadores'}">`:avatar(c,kind==='ganhou'?'happy':'sad');
+}
+function duo(w,l){
+  if(!l)return '';
+  return `<div class="duo"><figure class="win">${scene(w,'ganhou')}<figcaption>👑 VENCEDOR · ${w.nome}</figcaption></figure><figure class="lose">${scene(l,'perdeu')}<figcaption>${l.nome} · não foi dessa vez</figcaption></figure></div>`;
+}
 function renderChamp(d){
   const el=$('champ'),sp=$('splash');
   if(!d||!finished(d)){el.className='champ';el.innerHTML='';sp.className='splash';sp.innerHTML='';return}
@@ -322,13 +348,14 @@ function renderChamp(d){
   const dif=l.votos-(loser?loser.votos:0);
   el.className='champ on';
   el.innerHTML=`<div class="trophy">🏆</div><div class="t1">VITÓRIA DE</div><div class="nm">${l.nome}</div><div class="t2">${cargo} · 2º turno 2026</div>
+    ${duo(l,loser)}
     <div class="stats"><span><b>${pct(l.pct)}</b> dos votos válidos</span><span><b>${fmt(l.votos)}</b> votos</span><span>+<b>${fmt(dif)}</b> sobre ${loser?loser.nome:'o adversário'}</span><span>Apuração <b>${pct(DEMO?100:d.secPct,0)}</b></span></div>`;
   const key=state.k+state.uf+l.id;
   if(!splashSeen[key]){
     splashSeen[key]=1;
     const cols={pt:['#fff','#ffd23f','#ff6b6b','#8b0d13'],pl:['#ffd23f','#fff','#1b3a8a','#0f9d4f'],x:['#fff','#ffd23f','#4cc3ff','#ff7ab6']}[persKey(l)];
     const conf=Array.from({length:80},()=>`<i style="left:${Math.random()*100}%;background:${cols[Math.random()*cols.length|0]};animation-duration:${2+Math.random()*3}s;animation-delay:${-Math.random()*5}s;transform:rotate(${Math.random()*360}deg)"></i>`).join('');
-    sp.innerHTML=`<div class="conf">${conf}</div><div class="face">${avatar(l,'happy')}</div><div class="trophy">🏆</div><div class="t1">VITÓRIA DE</div><div class="nm">${l.nome}</div><div class="t2">${cargo} · ${pct(l.pct)} dos votos válidos</div><button id="closeSplash">Ver apuração completa</button>`;
+    sp.innerHTML=`<div class="conf">${conf}</div>${IMGS[imgKey(l)+'ganhou']?`<img class="bigscene" src="${IMGS[imgKey(l)+'ganhou']}" alt="${l.nome} comemorando com apoiadores">`:`<div class="face">${avatar(l,'happy')}</div>`}<div class="trophy">🏆</div><div class="t1">VITÓRIA DE</div><div class="nm">${l.nome}</div><div class="t2">${cargo} · ${pct(l.pct)} dos votos válidos</div><button id="closeSplash">Ver apuração completa</button>`;
     sp.className='splash on';
     $('closeSplash').onclick=()=>{sp.className='splash'};
   }
