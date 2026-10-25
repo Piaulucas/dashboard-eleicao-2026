@@ -64,7 +64,7 @@ A licença **não cobre** o que não é código do projeto:
 
 ## Contribuindo
 
-Sugestões e correções são bem-vindas por *issue* ou *pull request*.
+Sugestões e correções são bem-vindas por *issue* ou *pull request*. Veja o [guia de contribuição](CONTRIBUTING.md) e o [código de conduta](CODE_OF_CONDUCT.md).
 
 ## Autoria
 

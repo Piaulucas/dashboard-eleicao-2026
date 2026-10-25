@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Resultado oficial das eleições
+    url: https://resultados.tse.jus.br
+    about: Para conferir números, use sempre o site oficial do TSE.
