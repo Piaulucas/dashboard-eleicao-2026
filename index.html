@@ -125,6 +125,16 @@ svg{width:100%;height:auto;display:block}
 .splash .face{width:clamp(110px,18vw,200px);height:clamp(110px,18vw,200px);margin-bottom:6px}
 .splash .face .av{width:100%;height:100%}
 .splash>*:not(.conf){position:relative;z-index:1}
+.toast{position:relative;display:flex;align-items:center;gap:12px;background:var(--surface);color:var(--ink);border:2px solid #ffd23f;border-left:8px solid var(--tc,#ffd23f);border-radius:14px;padding:10px 12px;margin-bottom:8px;box-shadow:0 10px 30px rgba(0,0,0,.4);cursor:pointer;animation:toastIn .5s cubic-bezier(.2,1.4,.4,1)}
+.toast.out{opacity:0;transform:translateY(-14px);transition:.3s}
+#toasts{position:fixed;top:10px;left:50%;transform:translateX(-50%);z-index:60;width:min(94vw,520px)}
+.toast .tt{font-size:34px;line-height:1;animation:bounce 1s ease-in-out infinite}
+.toast .tb{min-width:0;flex:1}
+.toast .t1{font-size:11px;font-weight:800;letter-spacing:1.5px;color:var(--ink2)}
+.toast .t2{font-size:20px;font-weight:800;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.toast .t3{font-size:12px;color:var(--ink2)}
+.toast button{border:0;background:transparent;color:var(--ink2);font-size:22px;cursor:pointer;padding:0 4px}
+@keyframes toastIn{from{opacity:0;transform:translateY(-40px) scale(.92)}to{opacity:1;transform:none}}
 .duo{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:16px auto 6px;max-width:660px}
 .duo figure{margin:0;background:#fff;border-radius:14px;padding:8px;color:#14181f}
 .duo .win{border:4px solid #ffd23f;box-shadow:0 0 24px rgba(255,210,63,.65)}
@@ -191,6 +201,7 @@ svg{width:100%;height:auto;display:block}
 <p class="credit">Projeto de autoria de <b>Lucas Piau</b></p>
 <p class="foot">Fonte: API oficial de divulgação de resultados do TSE (resultados.tse.jus.br). Os números são parciais e podem mudar até a totalização final; apenas o TSE divulga o resultado oficial. Projeto independente, sem vínculo com o TSE. Caricaturas geradas com IA.</p>
 </div>
+<div id="toasts" aria-live="polite"></div>
 <div class="splash" id="splash" role="dialog" aria-modal="true" aria-label="Vencedor da eleição"></div>
 
 <script>
@@ -250,6 +261,7 @@ function parse(raw){
   for(const a of c.agr)for(const p of a.par)for(const cd of p.cand)
     cands.push({id:cd.sqcand,nome:cd.nmu,partido:p.sg,numero:cd.n,seq:num(cd.seq),votos:num(cd.vap),pct:num(cd.pvapn),eleito:cd.e==='s'});
   cands.sort((a,b)=>a.seq-b.seq);
+  if(DEMO_ELEITO&&c.cd==='3'&&['df','rn'].includes(raw.cdabr)){const m=cands.reduce((a,b)=>b.votos>a.votos?b:a);m.eleito=true}
   assignCores(cands);
   const s=raw.s||{},e=raw.e||{},v=raw.v||{};
   return {cands,hg:raw.hg,dg:raw.dg,
@@ -268,6 +280,10 @@ async function refreshAll(){
   res.forEach((r,i)=>{if(r.status==='fulfilled'){state.data[k+':'+need[i]]=r.value;ok++}});
   state.err=ok===0?'Falha ao consultar a API do TSE':null;
   if(ok){state.ts=new Date();recordHistory()}
+  /* em segundo plano: a outra eleição, para avisar quando alguém for declarado eleito mesmo fora da aba aberta */
+  const outra=k==='pres'?'gov':'pres',ou=outra==='pres'?['br']:ELECOES.gov.ufs;
+  await Promise.allSettled(ou.map(uf=>getJSON(url(outra,uf)).then(parse).then(v=>{state.data[outra+':'+uf]=v})));
+  checkEleitos();
   state.loading=false;state.next=POLL;render();
 }
 
@@ -374,7 +390,11 @@ function leaderOf(d){
 const DEMO=/[?&]demo=fim/.test(location.search);
 /* campeão só com 100% das seções totalizadas (todas as seções, sem arredondamento) */
 const apuracaoCompleta=d=>d.secTot>0&&d.secApur>=d.secTot;
-const finished=d=>!!leaderOf(d)&&(state.k==='gov'||state.uf==='br')&&(apuracaoCompleta(d)||DEMO);
+/* vencedor: quem o TSE marcou como "Eleito" (campo e='s'), que pode acontecer antes dos 100%;
+   na falta disso, só com 100% das seções. Não fazemos projeção própria. */
+const DEMO_ELEITO=/[?&]demo=eleito/.test(location.search);
+const winnerOf=d=>d.cands.find(x=>x.eleito)||((apuracaoCompleta(d)||DEMO)?leaderOf(d):null);
+const finished=d=>!!winnerOf(d)&&(state.k==='gov'||state.uf==='br');
 function renderHero(d){
   if(!d){$('hero').innerHTML='<div class="note">Carregando dados do TSE…</div>';return}
   const [a,b]=d.cands;
@@ -390,6 +410,28 @@ function renderHero(d){
    <div class="lead">${lider?`<b>${lider.nome}</b> ${fim?'venceu':'lidera'} por <b>${fmt(dif)}</b> votos (${pct(Math.abs(a.pct-b.pct))} pontos). `:'Sem líder definido ainda. '}
    Seções apuradas: <b>${pct(DEMO&&fim?100:d.secPct)}</b> (${fmt(d.secApur)} de ${fmt(d.secTot)}).${d.encerrado?' <b>Totalização encerrada.</b>':''}</div>`;
 }
+/* ---------- aviso discreto: governador eleito (marcação oficial do TSE) ---------- */
+const UFN={ac:'Acre',am:'Amazonas',df:'Distrito Federal',es:'Espírito Santo',rn:'Rio Grande do Norte',to:'Tocantins'};
+let seenEleito=new Set();try{seenEleito=new Set(JSON.parse(sessionStorage.getItem('eleitos')||'[]'))}catch{}
+function checkEleitos(){
+  Object.entries(state.data).forEach(([key,d])=>{
+    const [k,uf]=key.split(':');if(k!=='gov')return;
+    const w=d.cands.find(x=>x.eleito);if(!w)return;
+    const id=key+w.id;if(seenEleito.has(id))return;
+    seenEleito.add(id);showToast(uf,w,d);
+  });
+  try{sessionStorage.setItem('eleitos',JSON.stringify([...seenEleito]))}catch{}
+}
+function showToast(uf,w,d){
+  const f=GEN[w.nome]==='f',el=document.createElement('div');
+  el.className='toast';el.style.setProperty('--tc',w.cor);
+  el.innerHTML=`<div class="tt">🏆</div><div class="tb"><div class="t1">${f?'GOVERNADORA ELEITA':'GOVERNADOR ELEITO'} · ${uf.toUpperCase()}</div><div class="t2">${w.nome}</div><div class="t3">${w.partido} ${w.numero} · ${pct(w.pct,1)} · ${UFN[uf]||uf.toUpperCase()} · confirmado pelo TSE</div></div><button aria-label="Fechar">×</button>`;
+  const fechar=()=>{el.classList.add('out');setTimeout(()=>el.remove(),300)};
+  el.querySelector('button').onclick=e=>{e.stopPropagation();fechar()};
+  el.onclick=()=>{state.k='gov';state.uf=uf;sel();refreshAll();fechar()};
+  $('toasts').appendChild(el);
+  setTimeout(fechar,16000);
+}
 /* ---------- vitória: tela cheia + quadro destacado ---------- */
 let splashSeen={};
 function scene(c,kind){
@@ -403,15 +445,15 @@ function duo(w,l){
 function renderChamp(d){
   const el=$('champ'),sp=$('splash');
   if(!d||!finished(d)){el.className='champ';el.innerHTML='';sp.className='splash';sp.innerHTML='';return}
-  const l=leaderOf(d),loser=d.cands.find(x=>x!==l);
+  const l=winnerOf(d),loser=d.cands.find(x=>x!==l);
   const cargo=state.k==='pres'?'Presidente da República':`Governo de ${state.uf.toUpperCase()}`;
   const dif=l.votos-(loser?loser.votos:0);
   el.className='champ on';
   el.innerHTML=`<div class="trophy">🏆</div><div class="t1">VITÓRIA DE</div><div class="nm">${l.nome}</div><div class="t2">${cargo} · 2º turno 2026</div>
     ${duo(l,loser)}
-    <div class="stats"><span><b>${pct(l.pct)}</b> dos votos válidos</span><span><b>${fmt(l.votos)}</b> votos</span><span>+<b>${fmt(dif)}</b> sobre ${loser?loser.nome:'o adversário'}</span><span>Apuração <b>${pct(DEMO?100:d.secPct,0)}</b></span></div>`;
+    <div class="stats"><span><b>${pct(l.pct)}</b> dos votos válidos</span><span><b>${fmt(l.votos)}</b> votos</span><span>+<b>${fmt(dif)}</b> sobre ${loser?loser.nome:'o adversário'}</span><span>${apuracaoCompleta(d)||DEMO?'Apuração <b>100%</b>':'Eleição definida pelo TSE · apuração <b>'+pct(d.secPct,1)+'</b>'}</span></div>`;
   const key=state.k+state.uf+l.id;
-  if(!splashSeen[key]){
+  if(state.k==='pres'&&!splashSeen[key]){
     splashSeen[key]=1;
     const cols={pt:['#fff','#ffd23f','#ff6b6b','#8b0d13'],pl:['#ffd23f','#fff','#1b3a8a','#0f9d4f'],x:['#fff','#ffd23f','#4cc3ff','#ff7ab6']}[persKey(l)];
     const conf=Array.from({length:80},()=>`<i style="left:${Math.random()*100}%;background:${cols[Math.random()*cols.length|0]};animation-duration:${2+Math.random()*3}s;animation-delay:${-Math.random()*5}s;transform:rotate(${Math.random()*360}deg)"></i>`).join('');
