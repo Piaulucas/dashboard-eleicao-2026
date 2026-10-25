@@ -158,7 +158,7 @@ svg{width:100%;height:auto;display:block}
 <section class="champ" id="champ"></section>
 <section class="card" id="hero"></section>
 <section class="card"><h2>Indicadores da apuração</h2><div class="grid" id="tiles"></div></section>
-<section class="card"><h2>Mapa por estado <span class="note">· cor do candidato que lidera; mais escuro = maior margem</span></h2>
+<section class="card"><h2>Mapa por estado <span class="note">· vermelho (PT) ou azul (PL) conforme quem lidera; cor mais forte = maior margem</span></h2>
   <div class="legend" id="maplegend"></div>
   <div class="chartbox mapwrap" id="mapbox"><svg class="map" id="map" viewBox="0 0 600 600" role="img" aria-label="Mapa do Brasil colorido pelo candidato que lidera em cada estado"></svg><div class="tip" id="maptip"></div></div>
 </section>
@@ -462,6 +462,8 @@ async function loadGeo(){
     try{localStorage.setItem('geo-v1',JSON.stringify(GEO))}catch{}
   }catch{geoErr=true}
 }
+/* cores do mapa por partido: PT vermelho, PL azul (demais usam a cor do candidato) */
+const mapCor=c=>c.partido==='PT'?'#d41f2a':c.partido==='PL'?'#1f5fd1':c.cor;
 function renderMap(){
   const svg=$('map');
   if(!GEO){svg.innerHTML=`<text x="300" y="300" style="fill:var(--muted);stroke:none;font-size:13px">${geoErr?'Mapa indisponível no momento':'Carregando mapa…'}</text>`;return}
@@ -470,7 +472,7 @@ function renderMap(){
   svg.setAttribute('viewBox',`0 0 ${GEO.W} ${GEO.H}`);
   if(!base){svg.innerHTML='';return}
   const [a,b]=base.cands;
-  $('maplegend').innerHTML=[a,b].map(c=>`<span><span class="sw" style="background:${c.cor}"></span> ${c.nome} lidera</span>`).join('')+'<span><span class="sw" style="background:var(--line)"></span> sem votos apurados</span>';
+  $('maplegend').innerHTML=[a,b].map(c=>`<span><span class="sw" style="background:${mapCor(c)}"></span> ${c.nome} lidera</span>`).join('')+'<span><span class="sw" style="background:var(--line)"></span> sem votos apurados</span>';
   const ufsEleicao=ELECOES[k].ufs;
   svg.innerHTML=GEO.paths.map(g=>{
     const d=state.data[k+':'+g.uf],inEl=ufsEleicao.includes(g.uf);
@@ -478,7 +480,7 @@ function renderMap(){
     let fill='var(--line)',op=inEl?1:.45,tip=inEl?`${g.uf.toUpperCase()}: sem votos apurados`:`${g.uf.toUpperCase()}: sem eleição neste turno`;
     if(va&&vb&&(va.votos+vb.votos)>0){
       const lead=va.votos>=vb.votos?a:b,m=Math.abs(va.pct-vb.pct);
-      fill=lead.cor;op=Math.min(1,.4+m/50*.6);
+      fill=mapCor(lead);op=Math.min(1,.4+m/50*.6);
       tip=`${g.uf.toUpperCase()}: ${a.nome} ${pct(va.pct,1)} · ${b.nome} ${pct(vb.pct,1)} · ${pct(d.secPct,1)} apurado`;
     }
     return `<path data-uf="${g.uf}" data-tip="${tip}" d="${g.d}" fill="${fill}" fill-opacity="${op}" class="${g.uf===state.uf?'sel':''}"/>`;
