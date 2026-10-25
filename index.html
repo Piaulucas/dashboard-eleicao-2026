@@ -7,12 +7,12 @@
 <style>
 :root{
   --bg:#f6f7f9;--surface:#fff;--ink:#14181f;--ink2:#4a5361;--muted:#7b8494;--line:#e3e6eb;
-  --c1:#2a6fdb;--c2:#d9822b;--pt:#d41f2a;--pl:#1f5fd1;--good:#1a8a4a;--warn:#b7791f;
+  --lift:0%;--c1:#2a6fdb;--c2:#d9822b;--pt:#d41f2a;--pl:#1f5fd1;--good:#1a8a4a;--warn:#b7791f;
 }
 @media (prefers-color-scheme:dark){:root:not([data-theme=light]){
   --bg:#0f1218;--surface:#171b23;--ink:#eef0f4;--ink2:#b3bac7;--muted:#8791a1;--line:#272d38;
-  --c1:#5b97f2;--c2:#f0a050;--pt:#f0505c;--pl:#5a96f7;--good:#4cc285;--warn:#e0b050}}
-:root[data-theme=dark]{--bg:#0f1218;--surface:#171b23;--ink:#eef0f4;--ink2:#b3bac7;--muted:#8791a1;--line:#272d38;--c1:#5b97f2;--c2:#f0a050;--pt:#f0505c;--pl:#5a96f7;--good:#4cc285;--warn:#e0b050}
+  --lift:38%;--c1:#5b97f2;--c2:#f0a050;--pt:#f0505c;--pl:#5a96f7;--good:#4cc285;--warn:#e0b050}}
+:root[data-theme=dark]{--lift:38%;--bg:#0f1218;--surface:#171b23;--ink:#eef0f4;--ink2:#b3bac7;--muted:#8791a1;--line:#272d38;--c1:#5b97f2;--c2:#f0a050;--pt:#f0505c;--pl:#5a96f7;--good:#4cc285;--warn:#e0b050}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif}
 .wrap{max-width:1100px;margin:0 auto;padding:16px}
@@ -20,7 +20,8 @@ header{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:s
 html{--page:#1f2a44;--wm:"";--accent:#fff}
 html[data-lead=pt]{--page:#c4161c;--wm:"13"}
 html[data-lead=pl]{--page:#0b7a3b;--wm:"22"}
-@media (prefers-color-scheme:dark){html[data-lead=pt]:not([data-theme=light]){--page:#7a0f15}html[data-lead=pl]:not([data-theme=light]){--page:#06471f}html:not([data-lead=pt]):not([data-lead=pl]):not([data-theme=light]){--page:#121828}}
+html[data-party=on]{--page:color-mix(in srgb,var(--party,#1f2a44),#000 38%)}
+@media (prefers-color-scheme:dark){html[data-lead=pt]:not([data-theme=light]){--page:#7a0f15}html[data-lead=pl]:not([data-theme=light]){--page:#06471f}html[data-lead=x]:not([data-party=on]):not([data-theme=light]){--page:#121828}html[data-party=on]:not([data-theme=light]){--page:color-mix(in srgb,var(--party,#1f2a44),#000 62%)}}
 body{background:var(--page);transition:background .6s;position:relative;overflow-x:hidden}
 body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;opacity:0;transition:opacity .6s}
 html[data-lead=pt] body::after{opacity:1;background:radial-gradient(circle at 85% -10%,rgba(255,255,255,.16),transparent 45%)}
@@ -197,13 +198,43 @@ try{const s=JSON.parse(sessionStorage.getItem('sel')||'null');if(s&&ELECOES[s.k]
 
 async function getJSON(u){const r=await fetch(u,{cache:'no-store'});if(!r.ok)throw new Error(r.status);return r.json()}
 
+/* cores por partido: h = cor principal, s = cor secundária (usada se dois candidatos da mesma disputa ficarem parecidos).
+   Fonte das cores: campo "Cores" de cada partido na Wikipédia (pt); PT vermelho e PL azul definidos pelo autor. */
+const PARTIDOS={
+  PT:{h:'#d41f2a',v:'var(--pt)'},
+  PL:{h:'#1f5fd1',v:'var(--pl)',s:'#f2c200'},
+  PP:{h:'#1f4fa8',s:'#19a7b8'},
+  REPUBLICANOS:{h:'#1a9a4a',s:'#e0b000'},
+  PSD:{h:'#1b3a7a',s:'#f08a24'},
+  MDB:{h:'#0f8a3c',s:'#e0b000'},
+  'UNIÃO':{h:'#2457d6',s:'#f2c200'},
+  PSDB:{h:'#14407a',s:'#e8b800'}
+};
+const rgb=h=>[1,3,5].map(i=>parseInt(h.slice(i,i+2),16));
+const dist=(a,b)=>Math.hypot(...rgb(a).map((v,i)=>v-rgb(b)[i]));
+const lift=h=>`color-mix(in srgb,${h},white var(--lift))`;
+function assignCores(cands){
+  const FALL=['#d9822b','#7a4fd0'];let f=0;
+  const use=cands.map(x=>{const P=PARTIDOS[x.partido];return P?{P,sec:false}:null});
+  if(use[0]&&use[1]&&dist(use[0].P.h,use[1].P.h)<110){
+    /* troca a cor de quem não é PT/PL (esses mantêm vermelho e azul); se ambos forem "livres", troca o segundo */
+    const fixo=i=>cands[i].partido==='PT'||cands[i].partido==='PL';
+    const alvo=!fixo(1)&&use[1].P.s?1:!fixo(0)&&use[0].P.s?0:use[1].P.s?1:0;
+    if(use[alvo].P.s)use[alvo].sec=true;
+  }
+  cands.forEach((x,i)=>{
+    const u=use[i];
+    if(!u){x.cor=FALL[f++%2];x.corHex=x.cor;return}
+    x.corHex=u.sec?u.P.s:u.P.h;
+    x.cor=!u.sec&&u.P.v?u.P.v:lift(x.corHex);
+  });
+}
 function parse(raw){
   const c=raw.carg[0],cands=[];
   for(const a of c.agr)for(const p of a.par)for(const cd of p.cand)
-    cands.push({id:cd.sqcand,nome:cd.nmu,partido:p.sg,seq:num(cd.seq),votos:num(cd.vap),pct:num(cd.pvapn),eleito:cd.e==='s'});
+    cands.push({id:cd.sqcand,nome:cd.nmu,partido:p.sg,numero:cd.n,seq:num(cd.seq),votos:num(cd.vap),pct:num(cd.pvapn),eleito:cd.e==='s'});
   cands.sort((a,b)=>a.seq-b.seq);
-  const EXTRA=['#d9822b','#7a4fd0'];let ex=0;
-  cands.forEach(x=>{x.cor=x.partido==='PT'?'var(--pt)':x.partido==='PL'?'var(--pl)':EXTRA[ex++%2]});
+  assignCores(cands);
   const s=raw.s||{},e=raw.e||{},v=raw.v||{};
   return {cands,hg:raw.hg,dg:raw.dg,
     secTot:num(s.ts),secApur:num(s.st),secPct:num(s.pstn),
@@ -270,6 +301,12 @@ const PERS={
   pt:{bg:'#c4161c',hair:'#e9e9ec',beard:'#f4f4f6',stache:'#ffffff',suit:'#1d3b73',tie:'#c4161c',skin:'#f0bd98',brow:'#b7b7bd'},
   pl:{bg:'#0b7a3b',hair:'#2b1d16',beard:'#6b5445',stache:null,suit:'#14305e',tie:'#0b7a3b',skin:'#f2c3a0',brow:'#2b1d16'},
   x:{bg:'#3b4a6b',hair:'#3a2a20',beard:null,stache:null,suit:'#444b5a',tie:'#8a93a6',skin:'#e8b894',brow:'#3a2a20'}};
+/* gênero dos candidatos a governador (o arquivo do TSE não traz o campo; definido a partir dos nomes registrados) */
+const GEN={'MAILZA ASSIS':'f','CELINA LEÃO':'f','PROFESSORA MARIA DO CARMO':'f','PROFESSORA DORINHA':'f'};
+function genericPers(c){
+  const hair=['#2b1d16','#5a3a22','#8e8e95'][[...c.nome].reduce((a,ch)=>a+ch.charCodeAt(0),0)%3];
+  return {bg:c.cor,hair,beard:null,stache:null,suit:'#2d3648',tie:c.cor,skin:'#e8b894',brow:hair,fem:GEN[c.nome]==='f'};
+}
 /* caricaturas valem só para Lula e Flávio na eleição presidencial (nome exato); governadores usam o boneco genérico */
 const persKey=c=>state.k!=='pres'?'x':c.nome==='LULA'?'pt':c.nome==='FLAVIO BOLSONARO'?'pl':'x';
 /* caricaturas em img/<lula|flavio>-<feliz|triste|neutro|ganhou|perdeu>.jpg; se não existirem, usa o desenho SVG */
@@ -282,7 +319,7 @@ const imgKey=c=>({pt:'lula',pl:'flavio'})[persKey(c)]||'';
 function avatar(c,mood){
   const pk=persKey(c),im=IMGS[imgKey(c)+(mood==='sad'?'triste':mood==='happy'?'feliz':'neutro')];
   if(im&&pk!=='x')return `<img class="av ${mood} photo" src="${im}" alt="${c.nome} ${mood==='sad'?'chorando':'sorrindo'}">`;
-  const P=PERS[persKey(c)],happy=mood==='happy',sad=mood==='sad';
+  const P=persKey(c)==='x'?genericPers(c):PERS[persKey(c)],happy=mood==='happy',sad=mood==='sad';
   const bg=sad?'#8c9db3':happy?P.bg:'#5d6b86';
   let o=`<svg class="av ${mood}" viewBox="0 0 120 120" role="img" aria-label="${c.nome} ${happy?'sorrindo':sad?'chorando':''}"><circle cx="60" cy="60" r="58" fill="${bg}"/>`;
   if(happy){
@@ -290,9 +327,11 @@ function avatar(c,mood){
     o+='<path d="M8 40q6-8 12 0t12 0" stroke="#ffd23f" stroke-width="2" fill="none"/><path d="M88 108q6-8 12 0t12 0" stroke="#fff" stroke-width="2" fill="none"/>';
   }
   if(sad)o+='<g class="rain" stroke="#dbe6f3" stroke-width="2" stroke-linecap="round"><path d="M16 14v8M30 24v8M96 12v8M106 28v8M12 56v8M108 78v8"/></g><path d="M8 18q4-10 16-8 4-8 16-2 10-2 12 8z" fill="#c9d4e2" opacity=".9"/>';
-  o+=`<path d="M22 100c4-22 20-30 38-30s34 8 38 30c-10 12-24 18-38 18s-28-6-38-18z" fill="${P.suit}"/><path d="M50 74l10 14 10-14z" fill="#fff"/><path d="M60 78l-4 28h8z" fill="${P.tie}"/>`;
+  if(P.fem)o+=`<path d="M24 52C20 84 22 104 32 114L88 114C98 104 100 84 96 52C94 16 26 16 24 52Z" fill="${P.hair}"/>`;
+  o+=`<path d="M22 100c4-22 20-30 38-30s34 8 38 30c-10 12-24 18-38 18s-28-6-38-18z" fill="${P.suit}"/><path d="M50 74l10 14 10-14z" fill="#fff"/>${P.fem?`<path d="M52 76Q60 86 68 76L64 90H56z" fill="${P.tie}"/>`:`<path d="M60 78l-4 28h8z" fill="${P.tie}"/>`}`;
   o+=`<circle cx="31" cy="54" r="7" fill="${P.skin}"/><circle cx="89" cy="54" r="7" fill="${P.skin}"/><ellipse cx="60" cy="52" rx="29" ry="33" fill="${P.skin}"/>`;
-  o+=`<path d="M30 46c-2-22 14-34 30-34s32 12 30 34c-4-12-12-18-30-18s-26 6-30 18z" fill="${P.hair}"/>`;
+  if(P.fem)o+='<circle cx="31" cy="63" r="2.6" fill="#f2c200"/><circle cx="89" cy="63" r="2.6" fill="#f2c200"/>';
+  o+=P.fem?`<path d="M29 56C26 24 44 10 60 10s34 14 31 46c-2-10-6-18-14-22-8 8-24 12-34 8-8 2-10 8-14 14z" fill="${P.hair}"/>`:`<path d="M30 46c-2-22 14-34 30-34s32 12 30 34c-4-12-12-18-30-18s-26 6-30 18z" fill="${P.hair}"/>`;
   if(P.beard)o+=`<path d="M31 62c2 26 14 40 29 40s27-14 29-40c-4 10-10 16-16 18-8 4-18 4-26 0-6-2-12-8-16-18z" fill="${P.beard}" ${persKey(c)==='pl'?'opacity=".55"':''}/>`;
   if(P.stache)o+=`<path d="M45 82c8 5 22 5 30 0-2 10-8 15-15 15s-13-5-15-15z" fill="${P.stache}"/>`;
   o+=`<path d="M60 52c-3 8-6 12-3 15 2 2 8 2 10 0 2-3-1-7-3-15z" fill="#e5a47e"/>`;
@@ -303,10 +342,11 @@ function avatar(c,mood){
     o+=`<ellipse cx="47" cy="51" rx="5" ry="3.5" fill="#fff"/><ellipse cx="73" cy="51" rx="5" ry="3.5" fill="#fff"/><circle cx="47" cy="${sad?52.5:51.5}" r="2.3" fill="#2a1a10"/><circle cx="73" cy="${sad?52.5:51.5}" r="2.3" fill="#2a1a10"/>`;
     if(sad)o+='<path class="tear" d="M46 56q-4 9 0 13q4-4 0-13z" fill="#5cc8ff"/><path class="tear" style="animation-delay:.5s" d="M74 56q-4 9 0 13q4-4 0-13z" fill="#5cc8ff"/>';
   }
+  if(P.fem)o+=`<path d="M40 49l-3-2M43 47l-1-3M80 49l3-2M77 47l1-3" stroke="#2a1a10" stroke-width="1.8" stroke-linecap="round"/>`;
   // boca
-  if(happy)o+='<path d="M42 79Q60 106 78 79Q60 88 42 79z" fill="#7a1f1f"/><path d="M46 80Q60 90 74 80Q60 85 46 80z" fill="#fff"/>';
-  else if(sad)o+='<path d="M46 94Q60 80 74 94" stroke="#5a2a2a" stroke-width="3.5" fill="none" stroke-linecap="round"/>';
-  else o+='<path d="M49 88H71" stroke="#5a2a2a" stroke-width="3.5" stroke-linecap="round"/>';
+  if(happy)o+=`<path d="M42 79Q60 106 78 79Q60 88 42 79z" fill="${P.fem?'#a8243a':'#7a1f1f'}"/><path d="M46 80Q60 90 74 80Q60 85 46 80z" fill="#fff"/>`;
+  else if(sad)o+=`<path d="M46 94Q60 80 74 94" stroke="${P.fem?'#a8243a':'#5a2a2a'}" stroke-width="3.5" fill="none" stroke-linecap="round"/>`;
+  else o+=`<path d="M49 88H71" stroke="${P.fem?'#a8243a':'#5a2a2a'}" stroke-width="3.5" stroke-linecap="round"/>`;
   if(happy)o+='<path d="M48 20L60 0 72 20z" fill="#ffd23f" stroke="#c98f00" stroke-width="1"/><path d="M52 14h16M55 8h10" stroke="#ff7ab6" stroke-width="2"/><circle cx="60" cy="1.5" r="3.5" fill="#ff4d6d"/>';
   return o+'</svg>';
 }
@@ -327,7 +367,7 @@ function renderHero(d){
   const dif=Math.abs((a?.votos||0)-(b?.votos||0));
   const lider=leaderOf(d),fim=finished(d);
   const mood=x=>!lider?'neutral':x===lider?'happy':'sad';
-  const c=x=>`<div class="cand ${x===b?'r':''}">${avatar(x,mood(x))}<div class="info"><div class="name"><span class="sw" style="background:${x.cor}"></span>${x.nome} <span class="bd">${x.partido}</span>${fim&&x===lider?' <span class="crown">👑</span>':''}</div>
+  const c=x=>`<div class="cand ${x===b?'r':''}">${avatar(x,mood(x))}<div class="info"><div class="name"><span class="sw" style="background:${x.cor}"></span>${x.nome} <span class="bd">${x.partido} · ${x.numero}</span>${fim&&x===lider?' <span class="crown">👑</span>':''}</div>
     <div class="pct">${pct(x.pct)}</div><div class="votes">${fmt(x.votos)} votos</div></div></div>`;
   $('hero').innerHTML=`<div class="hero">${c(a)}${c(b)}</div>
    <div class="split" role="img" aria-label="Proporção de votos"><div style="flex:${w[0]};background:${a.cor}"></div><div style="flex:${w[1]};background:${b.cor}"></div></div>
@@ -420,9 +460,15 @@ function applyTheme(d){
   const l=d&&d.cands.length&&d.cands.reduce((a,b)=>b.votos>a.votos?b:a);
   const tie=l&&d.cands.filter(c=>c.votos===l.votos).length>1;
   const key=!l||!l.votos||tie?'x':l.partido==='PT'?'pt':l.partido==='PL'?'pl':'x';
-  document.documentElement.dataset.lead=key;
-  $('badge').firstChild.textContent=key==='pl'?'22':key==='pt'?'13':'';
-  $('badge').style.display=key==='x'?'none':'';
+  const R=document.documentElement,PL=l&&l.votos&&!tie?PARTIDOS[l.partido]:null;
+  R.dataset.lead=key;
+  const custom=key==='x'&&PL;
+  R.dataset.party=custom?'on':'off';
+  if(custom){R.style.setProperty('--party',PL.h);R.style.setProperty('--wm',`"${l.numero}"`)}
+  else{R.style.removeProperty('--party');R.style.removeProperty('--wm')}
+  $('badge').firstChild.textContent=key==='pl'?'22':key==='pt'?'13':custom?l.numero:'';
+  $('badge').style.color=custom?PL.h:'';
+  $('badge').style.display=key==='x'&&!custom?'none':'';
   $('leadtxt').textContent=key==='x'?(l&&l.votos&&!tie?'Liderança: '+l.nome:'Aguardando liderança'):'Liderando agora: '+l.nome;
 }
 function render(){
