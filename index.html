@@ -37,6 +37,9 @@ html[data-lead=pl] .badge13{color:#0b7a3b}html[data-lead=pl] .badge13 small{colo
 html:not([data-lead=pt]):not([data-lead=pl]) .badge13{color:#1f2a44}
 .mapwrap{max-width:560px;margin:0 auto}
 .map path{stroke:var(--surface);stroke-width:1;cursor:pointer;transition:fill-opacity .4s}
+.map path.rg{fill:none;stroke:var(--ink);stroke-width:2.8;stroke-opacity:.9;stroke-linejoin:round;pointer-events:none;cursor:default}
+.map path.rg.on{stroke-width:4.2;stroke-opacity:1}
+.map path.rg.dim{stroke-width:1.6;stroke-opacity:.3}
 .map path:hover{stroke:var(--ink);stroke-width:2}
 .map path.sel{stroke:var(--ink);stroke-width:3}
 .map text{font-size:10px;font-weight:700;fill:#fff;stroke:rgba(0,0,0,.5);stroke-width:2.4px;paint-order:stroke;pointer-events:none;text-anchor:middle}
@@ -604,10 +607,10 @@ document.addEventListener('click',e=>{
   else if(t.dataset.col){const c=t.dataset.col;state.sort=state.sort.col===c?{col:c,dir:-state.sort.dir}:{col:c,dir:c==='uf'?1:-1};renderStates()}
 });
 document.addEventListener('click',e=>{
-  if(e.target.id==='limpar'){state.region=null;renderRegioes();renderStates();return}
+  if(e.target.id==='limpar'){state.region=null;renderRegioes();renderMap();renderStates();return}
   const t=e.target.closest('.regcard');if(!t)return;
   const n=t.dataset.reg;state.region=state.region===n?null:n;
-  renderRegioes();renderStates();
+  renderRegioes();renderMap();renderStates();
   if(state.region)$('statesCard').scrollIntoView({behavior:'smooth',block:'start'});
 });
 function sel(){try{sessionStorage.setItem('sel',JSON.stringify({k:state.k,uf:state.uf}))}catch{}}
@@ -616,11 +619,13 @@ function sel(){try{sessionStorage.setItem('sel',JSON.stringify({k:state.k,uf:sta
 /* ---------- mapa (malha de estados do IBGE) ---------- */
 const IBGE='https://servicodados.ibge.gov.br/api/v3/malhas/paises/BR?formato=application/vnd.geo+json&qualidade=minima&intrarregiao=UF';
 const UFCOD={11:'ro',12:'ac',13:'am',14:'rr',15:'pa',16:'ap',17:'to',21:'ma',22:'pi',23:'ce',24:'rn',25:'pb',26:'pe',27:'al',28:'se',29:'ba',31:'mg',32:'es',33:'rj',35:'sp',41:'pr',42:'sc',43:'rs',50:'ms',51:'mt',52:'go',53:'df'};
+const IBGE_REG='https://servicodados.ibge.gov.br/api/v3/malhas/paises/BR?formato=application/vnd.geo+json&qualidade=minima&intrarregiao=regiao';
+const REGNOME={1:'Norte',2:'Nordeste',3:'Sudeste',4:'Sul',5:'Centro-Oeste'};
 let GEO=null,geoErr=false;
 async function loadGeo(){
-  try{const c=localStorage.getItem('geo-v1');if(c){GEO=JSON.parse(c);return}}catch{}
+  try{const c=localStorage.getItem('geo-v2');if(c){GEO=JSON.parse(c);return}}catch{}
   try{
-    const g=await getJSON(IBGE);
+    const [g,rg]=await Promise.all([getJSON(IBGE),getJSON(IBGE_REG)]);
     const rings=f=>f.geometry.type==='Polygon'?f.geometry.coordinates:f.geometry.coordinates.flat();
     let x0=1e9,x1=-1e9,y0=1e9,y1=-1e9;
     g.features.forEach(f=>rings(f).forEach(r=>r.forEach(([x,y])=>{x0=Math.min(x0,x);x1=Math.max(x1,x);y0=Math.min(y0,y);y1=Math.max(y1,y)})));
@@ -631,8 +636,9 @@ async function loadGeo(){
       const d=rings(f).map(r=>r.map((pt,i)=>{const [x,y]=P(pt);bx0=Math.min(bx0,x);bx1=Math.max(bx1,x);by0=Math.min(by0,y);by1=Math.max(by1,y);return (i?'L':'M')+x.toFixed(1)+' '+y.toFixed(1)}).join('')+'Z').join('');
       return {uf:UFCOD[f.properties.codarea],d,cx:(bx0+bx1)/2,cy:(by0+by1)/2};
     }).filter(x=>x.uf);
-    GEO={W,H,paths};
-    try{localStorage.setItem('geo-v1',JSON.stringify(GEO))}catch{}
+    const regs=rg.features.map(f=>({n:REGNOME[f.properties.codarea],d:rings(f).map(r=>r.map((pt,i)=>{const [x,y]=P(pt);return (i?'L':'M')+x.toFixed(1)+' '+y.toFixed(1)}).join('')+'Z').join('')})).filter(x=>x.n);
+    GEO={W,H,paths,regs};
+    try{localStorage.setItem('geo-v2',JSON.stringify(GEO))}catch{}
   }catch{geoErr=true}
 }
 /* cor do mapa = cor do candidato (PT vermelho, PL azul) */
@@ -647,7 +653,7 @@ function renderMap(){
   const [a,b]=base.cands;
   const gov=k==='gov';
   $('maptitle').textContent='· cor mais forte = maior margem';
-  $('maplegend').innerHTML=(gov?'':[a,b].map(c=>`<span><span class="sw" style="background:${mapCor(c)}"></span> ${c.nome} lidera</span>`).join(''))+'<span><span class="sw" style="background:var(--line)"></span> sem votos apurados</span>';
+  $('maplegend').innerHTML=(gov?'':[a,b].map(c=>`<span><span class="sw" style="background:${mapCor(c)}"></span> ${c.nome} lidera</span>`).join(''))+'<span><span class="sw" style="background:var(--line)"></span> sem votos apurados</span><span><span class="sw" style="background:transparent;border:2px solid var(--ink)"></span> contorno = região</span>';
   const ufsEleicao=ELECOES[k].ufs;
   svg.innerHTML=GEO.paths.map(g=>{
     const d=state.data[k+':'+g.uf],inEl=ufsEleicao.includes(g.uf);
@@ -663,7 +669,7 @@ function renderMap(){
       tip=`${g.uf.toUpperCase()}: ${a.nome} ${pct(va.pct,1)} · ${b.nome} ${pct(vb.pct,1)} · ${pct(d.secPct,1)} apurado`;
     }
     return `<path data-uf="${g.uf}" data-tip="${tip}" d="${g.d}" fill="${fill}" fill-opacity="${op}" class="${g.uf===state.uf?'sel':''}"/>`;
-  }).join('')+GEO.paths.map(g=>`<text x="${g.cx}" y="${g.cy+3}">${g.uf.toUpperCase()}</text>`).join('');
+  }).join('')+(GEO.regs||[]).map(r=>{const f=state.k==='pres'&&state.region;return `<path class="rg${f&&state.region===r.n?' on':''}${f&&state.region!==r.n?' dim':''}" d="${r.d}"/>`}).join('')+GEO.paths.map(g=>`<text x="${g.cx}" y="${g.cy+3}">${g.uf.toUpperCase()}</text>`).join('');
 }
 (()=>{
   const box=document.getElementById('mapbox');

@@ -15,7 +15,7 @@ Dashboard interativo que acompanha a apuração das eleições em tempo real, le
 
   ![Tema Flávio na frente](docs/02-tema-flavio.jpg)
 
-- **Mapa do Brasil por estado**, colorido pelo partido de quem lidera (PT vermelho, PL azul), com intensidade proporcional à margem, tooltip e clique para detalhar.
+- **Mapa do Brasil por estado**, colorido pelo partido de quem lidera (PT vermelho, PL azul), com intensidade proporcional à margem, **contorno das cinco regiões** (a região filtrada ganha destaque), tooltip e clique para detalhar.
 
   ![Mapa por estado](docs/03-mapa.jpg)
 
@@ -37,7 +37,7 @@ Dashboard interativo que acompanha a apuração das eleições em tempo real, le
 - **Sem back-end.** A API do TSE libera CORS, então o navegador consulta direto. O cache da API é de cerca de 50 s, por isso o intervalo de 60 s.
 - **Dados defasados e inconsistentes.** O TSE chegou a ficar mais de 1 h sem publicar (votação prorrogada), e os arquivos por estado são publicados em momentos diferentes do total nacional. O dashboard mostra a hora de geração do dado (horário de Brasília) e um aviso de defasagem, em vez de fingir que está "ao vivo".
 - **Regra do campeão.** O vencedor é quem o TSE marca como eleito (campo `e = s` / status "Eleito" nos dados) ou, na falta disso, quando `seções totalizadas ≥ total de seções`, sem arredondar o percentual. Nada de projeção própria: numa eleição, anunciar errado é pior que anunciar um pouco depois.
-- **Mapa sem biblioteca.** A malha de estados vem da API do IBGE e é projetada e desenhada em SVG puro no próprio código, com cache local.
+- **Mapa sem biblioteca.** A malha de estados e de regiões vem da API do IBGE e é projetada e desenhada em SVG puro no próprio código, com cache local.
 - **Cores por partido** definidas por variáveis CSS, com variantes para o modo escuro.
 
 ## Tecnologias
