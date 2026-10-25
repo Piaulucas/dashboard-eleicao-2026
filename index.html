@@ -40,6 +40,7 @@ html:not([data-lead=pt]):not([data-lead=pl]) .badge13{color:#1f2a44}
 .map path:hover{stroke:var(--ink);stroke-width:2}
 .map path.sel{stroke:var(--ink);stroke-width:3}
 .map text{font-size:10px;font-weight:700;fill:#fff;stroke:rgba(0,0,0,.5);stroke-width:2.4px;paint-order:stroke;pointer-events:none;text-anchor:middle}
+#states.govt th:nth-child(2){text-align:left}
 .stale{background:#ffd23f;color:#14181f;padding:2px 10px;border-radius:999px;font-weight:600}
 .leadtxt{font-size:12px;color:#fff;opacity:.9;margin-top:2px}
 .brand{display:flex;align-items:center;gap:14px;color:#fff}
@@ -136,7 +137,7 @@ svg{width:100%;height:auto;display:block}
 .conf i{position:absolute;top:-20px;width:10px;height:16px;opacity:.9;animation:fall linear infinite}
 @keyframes fall{to{transform:translateY(110vh) rotate(720deg)}}
 @media(max-width:600px){.hero{grid-template-columns:1fr}.cand.r{text-align:right}.av{width:72px;height:72px}}
-@media(max-width:600px){.cand .pct{font-size:32px}.mini{display:none}#states th,#states td{padding:8px 3px;font-size:13px}#states th:nth-child(5),#states td:nth-child(5){display:none}.card{padding:12px}.wrap{padding:12px}}
+@media(max-width:600px){.cand .pct{font-size:32px}.mini{display:none}#states th,#states td{padding:8px 3px;font-size:13px}#states:not(.govt) th:nth-child(5),#states:not(.govt) td:nth-child(5){display:none}.card{padding:12px}.wrap{padding:12px}}
 </style>
 </head>
 <body>
@@ -159,7 +160,7 @@ svg{width:100%;height:auto;display:block}
 <section class="champ" id="champ"></section>
 <section class="card" id="hero"></section>
 <section class="card"><h2>Indicadores da apuração</h2><div class="grid" id="tiles"></div></section>
-<section class="card"><h2>Mapa por estado <span class="note">· vermelho (PT) ou azul (PL) conforme quem lidera; cor mais forte = maior margem</span></h2>
+<section class="card"><h2>Mapa por estado <span class="note" id="maptitle"></span></h2>
   <div class="legend" id="maplegend"></div>
   <div class="chartbox mapwrap" id="mapbox"><svg class="map" id="map" viewBox="0 0 600 600" role="img" aria-label="Mapa do Brasil colorido pelo candidato que lidera em cada estado"></svg><div class="tip" id="maptip"></div></div>
 </section>
@@ -439,8 +440,25 @@ function renderChart(d){
   };
   hit.onmouseleave=()=>{cross.style.display='none';tip.style.display='none'};
 }
+function renderStatesGov(ufs){
+  const k=state.k,t=$('states');t.classList.add('govt');
+  const rows=ufs.map(uf=>{
+    const d=state.data[k+':'+uf];if(!d)return null;
+    const [l,sg]=[...d.cands].sort((x,y)=>y.votos-x.votos);
+    return {uf,d,l,sg,sem:!d.validos,v:{uf,lider:l.nome,pct:l.pct,dif:l.votos-sg.votos,sec:d.secPct}};
+  }).filter(Boolean);
+  let {col,dir}=state.sort;if(!['uf','lider','pct','dif','sec'].includes(col)){col='uf';dir=1}
+  rows.sort((r1,r2)=>{const a=r1.v[col],b=r2.v[col];return (typeof a==='string'?a.localeCompare(b):a-b)*dir});
+  const th=(c,l)=>`<th data-col="${c}">${l}${col===c?(dir>0?' ▲':' ▼'):''}</th>`;
+  t.tHead.innerHTML=`<tr>${th('uf','UF')}${th('lider','Líder')}${th('pct','%')}${th('dif','Diferença')}${th('sec','Apurado')}</tr>`;
+  t.tBodies[0].innerHTML=rows.map(r=>`<tr data-uf="${r.uf}"><td><b>${r.uf.toUpperCase()}</b></td>
+    <td style="text-align:left;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;${r.sem?'':`color:${r.l.cor};font-weight:700`}">${r.sem?'—':`${r.l.nome} <span class="note">${r.l.partido}</span>`}</td>
+    <td>${r.sem?'—':pct(r.l.pct,1)}</td><td>${r.sem?'—':'+'+fmt(r.l.votos-r.sg.votos)}</td><td>${pct(r.d.secPct,1)}</td></tr>`).join('');
+}
 function renderStates(){
   const k=state.k,ufs=ELECOES[k].ufs.filter(u=>u!=='br');
+  if(k==='gov'){renderStatesGov(ufs);return}
+  $('states').classList.remove('govt');
   const rows=ufs.map(uf=>({uf,d:state.data[k+':'+uf]})).filter(r=>r.d);
   const base=rows[0]?.d||state.data[k+':'+state.uf];
   if(!base){$('states').tHead.innerHTML='';$('states').tBodies[0].innerHTML='';return}
@@ -521,13 +539,19 @@ function renderMap(){
   svg.setAttribute('viewBox',`0 0 ${GEO.W} ${GEO.H}`);
   if(!base){svg.innerHTML='';return}
   const [a,b]=base.cands;
-  $('maplegend').innerHTML=[a,b].map(c=>`<span><span class="sw" style="background:${mapCor(c)}"></span> ${c.nome} lidera</span>`).join('')+'<span><span class="sw" style="background:var(--line)"></span> sem votos apurados</span>';
+  const gov=k==='gov';
+  $('maptitle').textContent=gov?'· cor do partido de quem lidera em cada estado; cor mais forte = maior margem':'· vermelho (PT) ou azul (PL) conforme quem lidera; cor mais forte = maior margem';
+  $('maplegend').innerHTML=(gov?'':[a,b].map(c=>`<span><span class="sw" style="background:${mapCor(c)}"></span> ${c.nome} lidera</span>`).join(''))+'<span><span class="sw" style="background:var(--line)"></span> sem votos apurados</span>';
   const ufsEleicao=ELECOES[k].ufs;
   svg.innerHTML=GEO.paths.map(g=>{
     const d=state.data[k+':'+g.uf],inEl=ufsEleicao.includes(g.uf);
     const va=d?.cands.find(x=>x.id===a.id),vb=d?.cands.find(x=>x.id===b.id);
     let fill='var(--line)',op=inEl?1:.45,tip=inEl?`${g.uf.toUpperCase()}: sem votos apurados`:`${g.uf.toUpperCase()}: sem eleição neste turno`;
-    if(va&&vb&&(va.votos+vb.votos)>0){
+    if(gov&&d&&d.validos>0){
+      const [l,sg]=[...d.cands].sort((x,y)=>y.votos-x.votos);
+      fill=mapCor(l);op=Math.min(1,.4+(l.pct-sg.pct)/50*.6);
+      tip=`${g.uf.toUpperCase()}: ${l.nome} ${pct(l.pct,1)} · ${sg.nome} ${pct(sg.pct,1)} · ${pct(d.secPct,1)} apurado`;
+    }else if(!gov&&va&&vb&&(va.votos+vb.votos)>0){
       const lead=va.votos>=vb.votos?a:b,m=Math.abs(va.pct-vb.pct);
       fill=mapCor(lead);op=Math.min(1,.4+m/50*.6);
       tip=`${g.uf.toUpperCase()}: ${a.nome} ${pct(va.pct,1)} · ${b.nome} ${pct(vb.pct,1)} · ${pct(d.secPct,1)} apurado`;
