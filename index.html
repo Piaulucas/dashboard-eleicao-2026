@@ -138,6 +138,22 @@ svg{width:100%;height:auto;display:block}
 @keyframes fall{to{transform:translateY(110vh) rotate(720deg)}}
 @media(max-width:600px){.hero{grid-template-columns:1fr}.cand.r{text-align:right}.av{width:72px;height:72px}}
 @media(max-width:600px){.cand .pct{font-size:32px}.mini{display:none}#states th,#states td{padding:8px 3px;font-size:13px}#states:not(.govt) th:nth-child(5),#states:not(.govt) td:nth-child(5){display:none}.card{padding:12px}.wrap{padding:12px}}
+@media(max-width:600px){
+  header{margin-bottom:6px;gap:8px}
+  .brand{gap:10px;width:100%}
+  .brand>div:nth-child(1){flex:1;min-width:0}
+  h1{font-size:18px}
+  .sub{display:none}
+  .leadtxt{font-size:12px;margin-top:1px}
+  .badge13{width:46px;height:46px;font-size:21px;margin-left:auto}
+  .badge13 small{font-size:13px;top:-5px;right:-3px}
+  header .status{gap:2px 10px;font-size:12px;width:100%}
+  header .status .tab{padding:3px 10px;font-size:12px}
+  .tabs{gap:5px;margin:6px 0}
+  button.tab{padding:4px 10px;font-size:12px}
+  .stale{padding:1px 8px}
+  body::before{top:-14px;font-size:clamp(100px,30vw,170px)}
+}
 </style>
 </head>
 <body>
@@ -174,7 +190,7 @@ svg{width:100%;height:auto;display:block}
   <p class="note">O total do Brasil e os arquivos de cada estado são publicados pelo TSE em momentos diferentes, então a soma dos estados pode não bater com o total nacional enquanto a apuração avança.</p>
 </section>
 <p class="credit">Projeto de autoria de <b>Lucas Piau</b></p>
-<p class="foot">Os números são parciais e podem mudar até a totalização final; apenas o TSE divulga o resultado oficial. Projeto independente, sem vínculo com o TSE. Caricaturas geradas com IA.</p>
+<p class="foot">Fonte: API oficial de divulgação de resultados do TSE (resultados.tse.jus.br). Os números são parciais e podem mudar até a totalização final; apenas o TSE divulga o resultado oficial. Projeto independente, sem vínculo com o TSE. Caricaturas geradas com IA.</p>
 </div>
 <div class="splash" id="splash" role="dialog" aria-modal="true" aria-label="Vencedor da eleição"></div>
 
