@@ -54,6 +54,18 @@ python3 -m http.server 8765
 
 `?demo=fim` simula 100% apurado, para ver a tela de vitória.
 
+## Licença
+
+O **código** está sob a [Licença MIT](LICENSE): você pode usar, copiar, modificar e distribuir, mantendo o aviso de copyright.
+
+A licença **não cobre** o que não é código do projeto:
+- As caricaturas em `img/` e os prints em `docs/` foram geradas com IA e retratam pessoas reais; não são licenciadas sob a MIT e não devem ser reutilizadas sem avaliar os termos da ferramenta que as gerou.
+- Os dados exibidos pertencem às suas fontes oficiais: resultados do [TSE](https://resultados.tse.jus.br) e malha territorial do [IBGE](https://servicodados.ibge.gov.br).
+
+## Contribuindo
+
+Sugestões e correções são bem-vindas por *issue* ou *pull request*.
+
 ## Autoria
 
 Projeto de autoria de **Lucas Piau**.
