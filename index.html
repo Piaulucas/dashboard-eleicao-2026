@@ -314,7 +314,9 @@ function leaderOf(d){
   return l.votos&&d.cands.filter(c=>c.votos===l.votos).length===1?l:null;
 }
 const DEMO=/[?&]demo=fim/.test(location.search);
-const finished=d=>!!leaderOf(d)&&(state.k==='gov'||state.uf==='br')&&(d.encerrado||d.secPct>=100||DEMO);
+/* campeão só com 100% das seções totalizadas (todas as seções, sem arredondamento) */
+const apuracaoCompleta=d=>d.secTot>0&&d.secApur>=d.secTot;
+const finished=d=>!!leaderOf(d)&&(state.k==='gov'||state.uf==='br')&&(apuracaoCompleta(d)||DEMO);
 function renderHero(d){
   if(!d){$('hero').innerHTML='<div class="note">Carregando dados do TSE…</div>';return}
   const [a,b]=d.cands;
@@ -338,7 +340,7 @@ function scene(c,kind){
 }
 function duo(w,l){
   if(!l)return '';
-  return `<div class="duo"><figure class="win">${scene(w,'ganhou')}<figcaption>👑 VENCEDOR · ${w.nome}</figcaption></figure><figure class="lose">${scene(l,'perdeu')}<figcaption>${l.nome} · não foi dessa vez</figcaption></figure></div>`;
+  return `<div class="duo"><figure class="win">${scene(w,'ganhou')}<figcaption>👑 VENCEDOR · ${w.nome}</figcaption></figure><figure class="lose">${scene(l,'perdeu')}<figcaption>${l.nome}</figcaption></figure></div>`;
 }
 function renderChamp(d){
   const el=$('champ'),sp=$('splash');
