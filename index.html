@@ -21,12 +21,12 @@ html{--page:#1f2a44;--wm:"";--accent:#fff}
 html[data-lead=pt]{--page:#c4161c;--wm:"13"}
 html[data-lead=pl]{--page:#0b7a3b;--wm:"22"}
 @media (prefers-color-scheme:dark){html[data-lead=pt]:not([data-theme=light]){--page:#7a0f15}html[data-lead=pl]:not([data-theme=light]){--page:#06471f}html:not([data-lead=pt]):not([data-lead=pl]):not([data-theme=light]){--page:#121828}}
-body{background:var(--page);transition:background .6s}
+body{background:var(--page);transition:background .6s;position:relative;overflow-x:hidden}
 body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;opacity:0;transition:opacity .6s}
 html[data-lead=pt] body::after{opacity:1;background:radial-gradient(circle at 85% -10%,rgba(255,255,255,.16),transparent 45%)}
 /* tema Flávio: verde e amarelo da bandeira, losangos e círculo azul */
 html[data-lead=pl] body::after{opacity:1;background:
-  radial-gradient(circle at 96% 100%,rgba(27,58,138,.9) 0 120px,rgba(255,210,63,.9) 121px 130px,transparent 131px),
+  radial-gradient(circle at 0% 100%,rgba(27,58,138,.9) 0 120px,rgba(255,210,63,.9) 121px 130px,transparent 131px),
   linear-gradient(135deg,transparent 46%,rgba(255,210,63,.13) 46% 54%,transparent 54%) 0 0/120px 120px,
   linear-gradient(45deg,transparent 46%,rgba(255,210,63,.13) 46% 54%,transparent 54%) 0 0/120px 120px}
 .mascot{display:none}
@@ -51,7 +51,7 @@ header .status{color:#fff}
 .credit{color:#fff;text-align:center;font-size:13px;margin:18px 0 6px}
 .credit b{letter-spacing:.2px}
 .foot{color:rgba(255,255,255,.8);font-size:12px;text-align:center}
-body::before{content:var(--wm);position:fixed;right:-20px;bottom:-60px;font-size:380px;font-weight:900;color:rgba(255,255,255,.07);pointer-events:none;line-height:1;z-index:0}
+body::before{content:var(--wm);position:absolute;right:max(8px,calc(50% - 560px));top:-8px;font-size:clamp(120px,26vw,250px);font-weight:900;color:rgba(255,255,255,.17);pointer-events:none;line-height:1;z-index:0;letter-spacing:-6px}
 .wrap{position:relative;z-index:1}
 .tabs{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}
 button.tab{border:1px solid var(--line);background:var(--surface);color:var(--ink2);padding:6px 12px;border-radius:999px;font:inherit;font-size:13px;cursor:pointer}
