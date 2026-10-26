@@ -10,6 +10,7 @@ Dashboard interativo que acompanha a apuração das eleições em tempo real, le
 
 ## O que ele faz
 
+- **Chave 1º turno / 2º turno** no topo. O 1º turno traz todos os candidatos (ranking com votos, percentuais e situação: eleito, vai ao 2º turno ou não eleito), os 27 governos e o resultado final por região e por estado. Candidatos sem gênero conhecido aparecem com as iniciais, em vez de um boneco.
 - **Placar em tempo real** para Presidente (Brasil, 27 UFs e exterior) e Governador (estados com 2º turno), com atualização automática a cada 60 s.
 - **Interface que muda conforme quem lidera**: fundo, marca d'água (13 ou 22), cores e caricaturas trocam sozinhos. Quem lidera aparece sorrindo com a faixa; quem está atrás, chorando.
 
