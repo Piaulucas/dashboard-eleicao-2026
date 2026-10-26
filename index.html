@@ -463,7 +463,7 @@ function checkEleitos(){
 function showToastGrupo(novos){
   const el=document.createElement('div');
   el.className='toast';el.style.setProperty('--tc','#ffd23f');
-  el.innerHTML=`<div class="tt">🏆</div><div class="tb"><div class="t1">${novos.length} GOVERNADORES ELEITOS</div>${novos.map(([uf,w])=>`<div class="t3 lnk" data-uf="${uf}"><b>${uf.toUpperCase()}</b> · ${w.nome} (${w.partido} ${w.numero}) · ${pct(w.pct,1)}</div>`).join('')}<div class="t3">resultados irreversíveis ou confirmados pelo TSE</div></div><button aria-label="Fechar">×</button>`;
+  el.innerHTML=`<div class="tt">🏆</div><div class="tb"><div class="t1">${novos.length} GOVERNADORES ELEITOS</div>${novos.map(([uf,w])=>`<div class="t3 lnk" data-uf="${uf}"><b>${uf.toUpperCase()}</b> · ${w.nome} (${w.partido} ${w.numero}) · ${pct(w.pct,1)}</div>`).join('')}<div class="t3">matematicamente eleitos</div></div><button aria-label="Fechar">×</button>`;
   const fechar=()=>{el.classList.add('out');setTimeout(()=>el.remove(),300)};
   el.querySelector('button').onclick=e=>{e.stopPropagation();fechar()};
   el.onclick=e=>{const l=e.target.closest('.lnk');if(l){state.k='gov';state.uf=l.dataset.uf;sel();refreshAll()}fechar()};
@@ -473,7 +473,7 @@ function showToastGrupo(novos){
 function showToast(uf,w,d){
   const f=GEN[w.nome]==='f',el=document.createElement('div');
   el.className='toast';el.style.setProperty('--tc',w.cor);
-  el.innerHTML=`<div class="tt">🏆</div><div class="tb"><div class="t1">${f?'GOVERNADORA ELEITA':'GOVERNADOR ELEITO'} · ${uf.toUpperCase()}</div><div class="t2">${w.nome}</div><div class="t3">${w.partido} ${w.numero} · ${pct(w.pct,1)} · ${UFN[uf]||uf.toUpperCase()} · ${w.eleito?'confirmado pelo TSE':'resultado matematicamente definido'}</div></div><button aria-label="Fechar">×</button>`;
+  el.innerHTML=`<div class="tt">🏆</div><div class="tb"><div class="t1">${f?'GOVERNADORA ELEITA':'GOVERNADOR ELEITO'} · ${uf.toUpperCase()}</div><div class="t2">${w.nome}</div><div class="t3">${w.partido} ${w.numero} · ${pct(w.pct,1)} · ${UFN[uf]||uf.toUpperCase()} · matematicamente eleito${GEN[w.nome]==='f'?'a':''}</div></div><button aria-label="Fechar">×</button>`;
   const fechar=()=>{el.classList.add('out');setTimeout(()=>el.remove(),300)};
   el.querySelector('button').onclick=e=>{e.stopPropagation();fechar()};
   el.onclick=()=>{state.k='gov';state.uf=uf;sel();refreshAll();fechar()};
@@ -499,7 +499,7 @@ function renderChamp(d){
   el.className='champ on';
   el.innerHTML=`<div class="trophy">🏆</div><div class="t1">VITÓRIA DE</div><div class="nm">${l.nome}</div><div class="t2">${cargo} · 2º turno 2026</div>
     ${duo(l,loser)}
-    <div class="stats"><span><b>${pct(l.pct)}</b> dos votos válidos</span><span><b>${fmt(l.votos)}</b> votos</span><span>+<b>${fmt(dif)}</b> sobre ${loser?loser.nome:'o adversário'}</span><span>${apuracaoCompleta(d)||DEMO?'Apuração <b>100%</b>':(l.eleito?'Eleito pelo TSE':'Matematicamente eleito (os votos restantes não mudam o resultado)')+' · apuração <b>'+pct(d.secPct,1)+'</b>'}</span></div>`;
+    <div class="stats"><span><b>${pct(l.pct)}</b> dos votos válidos</span><span><b>${fmt(l.votos)}</b> votos</span><span>+<b>${fmt(dif)}</b> sobre ${loser?loser.nome:'o adversário'}</span><span>${apuracaoCompleta(d)||DEMO?'Apuração <b>100%</b>':'Matematicamente eleito'+(GEN[l.nome]==='f'?'a':'')+' · apuração <b>'+pct(d.secPct,1)+'</b>'}</span></div>`;
   const key=state.k+state.uf+l.id;
   if(state.k==='pres'&&!splashSeen[key]){
     splashSeen[key]=1;
