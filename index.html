@@ -144,6 +144,7 @@ svg{width:100%;height:auto;display:block}
 .toast .tb{min-width:0;flex:1}
 .toast .t1{font-size:11px;font-weight:800;letter-spacing:1.5px;color:var(--ink2)}
 .toast .t2{font-size:20px;font-weight:800;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.toast .t3.lnk{cursor:pointer;margin-top:2px}.toast .t3.lnk:hover{text-decoration:underline}
 .toast .t3{font-size:12px;color:var(--ink2)}
 .toast button{border:0;background:transparent;color:var(--ink2);font-size:22px;cursor:pointer;padding:0 4px}
 @keyframes toastIn{from{opacity:0;transform:translateY(-40px) scale(.92)}to{opacity:1;transform:none}}
@@ -292,7 +293,7 @@ function parse(raw){
     secTot:num(s.ts),secApur:num(s.st),secPct:num(s.pstn),
     eleit:num(e.te),comp:num(e.c),compPct:num(e.pcn),abst:num(e.a),abstPct:num(e.pan),
     validos:num(v.vvc),brancos:num(v.vb),pbrancos:num(v.pvbn),nulos:num(v.tvn),pnulos:num(v.ptvnn),
-    totalVotos:num(v.tv),encerrado:raw.tf==='s'};
+    restantes:num(e.esnt),totalVotos:num(v.tv),encerrado:raw.tf==='s'};
 }
 
 async function refreshAll(){
@@ -417,7 +418,18 @@ const apuracaoCompleta=d=>d.secTot>0&&d.secApur>=d.secTot;
 /* vencedor: quem o TSE marcou como "Eleito" (campo e='s'), que pode acontecer antes dos 100%;
    na falta disso, só com 100% das seções. Não fazemos projeção própria. */
 const DEMO_ELEITO=/[?&]demo=eleito/.test(location.search);
-const winnerOf=d=>d.cands.find(x=>x.eleito)||((apuracaoCompleta(d)||DEMO)?leaderOf(d):null);
+/* "Matematicamente eleito": o resultado não muda nem que TODOS os eleitores das seções ainda não totalizadas
+   votem no adversário (2º turno: vantagem > eleitores restantes) ou, no 1º turno, o líder já garante mais da
+   metade dos votos válidos possíveis (votos×2 > válidos até agora + eleitores restantes). Não é projeção. */
+function matematicoEleito(d){
+  if(!d||!d.cands.length||d.secApur<=0||!(d.restantes>=0))return null;
+  const [l,sg]=[...d.cands].sort((a,b)=>b.votos-a.votos);
+  if(!l||!l.votos)return null;
+  const ok=d.cands.length===2?(l.votos-(sg?sg.votos:0)>d.restantes):(l.votos*2>d.validos+d.restantes);
+  return ok?l:null;
+}
+const eleitoDe=d=>d.cands.find(x=>x.eleito)||matematicoEleito(d)||(apuracaoCompleta(d)?leaderOf(d):null);
+const winnerOf=d=>eleitoDe(d)||(DEMO?leaderOf(d):null);
 const finished=d=>!!winnerOf(d)&&(state.k==='gov'||state.uf==='br');
 function renderHero(d){
   if(!d){$('hero').innerHTML='<div class="note">Carregando dados do TSE…</div>';return}
@@ -438,18 +450,30 @@ function renderHero(d){
 const UFN={ac:'Acre',am:'Amazonas',df:'Distrito Federal',es:'Espírito Santo',rn:'Rio Grande do Norte',to:'Tocantins'};
 let seenEleito=new Set();try{seenEleito=new Set(JSON.parse(sessionStorage.getItem('eleitos')||'[]'))}catch{}
 function checkEleitos(){
+  const novos=[];
   Object.entries(state.data).forEach(([key,d])=>{
     const [k,uf]=key.split(':');if(k!=='gov')return;
-    const w=d.cands.find(x=>x.eleito);if(!w)return;
+    const w=eleitoDe(d);if(!w)return;
     const id=key+w.id;if(seenEleito.has(id))return;
-    seenEleito.add(id);showToast(uf,w,d);
+    seenEleito.add(id);novos.push([uf,w,d]);
   });
   try{sessionStorage.setItem('eleitos',JSON.stringify([...seenEleito]))}catch{}
+  if(novos.length>2)showToastGrupo(novos);else novos.forEach(([uf,w,d])=>showToast(uf,w,d));
+}
+function showToastGrupo(novos){
+  const el=document.createElement('div');
+  el.className='toast';el.style.setProperty('--tc','#ffd23f');
+  el.innerHTML=`<div class="tt">🏆</div><div class="tb"><div class="t1">${novos.length} GOVERNADORES ELEITOS</div>${novos.map(([uf,w])=>`<div class="t3 lnk" data-uf="${uf}"><b>${uf.toUpperCase()}</b> · ${w.nome} (${w.partido} ${w.numero}) · ${pct(w.pct,1)}</div>`).join('')}<div class="t3">resultados irreversíveis ou confirmados pelo TSE</div></div><button aria-label="Fechar">×</button>`;
+  const fechar=()=>{el.classList.add('out');setTimeout(()=>el.remove(),300)};
+  el.querySelector('button').onclick=e=>{e.stopPropagation();fechar()};
+  el.onclick=e=>{const l=e.target.closest('.lnk');if(l){state.k='gov';state.uf=l.dataset.uf;sel();refreshAll()}fechar()};
+  $('toasts').appendChild(el);
+  setTimeout(fechar,22000);
 }
 function showToast(uf,w,d){
   const f=GEN[w.nome]==='f',el=document.createElement('div');
   el.className='toast';el.style.setProperty('--tc',w.cor);
-  el.innerHTML=`<div class="tt">🏆</div><div class="tb"><div class="t1">${f?'GOVERNADORA ELEITA':'GOVERNADOR ELEITO'} · ${uf.toUpperCase()}</div><div class="t2">${w.nome}</div><div class="t3">${w.partido} ${w.numero} · ${pct(w.pct,1)} · ${UFN[uf]||uf.toUpperCase()} · confirmado pelo TSE</div></div><button aria-label="Fechar">×</button>`;
+  el.innerHTML=`<div class="tt">🏆</div><div class="tb"><div class="t1">${f?'GOVERNADORA ELEITA':'GOVERNADOR ELEITO'} · ${uf.toUpperCase()}</div><div class="t2">${w.nome}</div><div class="t3">${w.partido} ${w.numero} · ${pct(w.pct,1)} · ${UFN[uf]||uf.toUpperCase()} · ${w.eleito?'confirmado pelo TSE':'resultado matematicamente definido'}</div></div><button aria-label="Fechar">×</button>`;
   const fechar=()=>{el.classList.add('out');setTimeout(()=>el.remove(),300)};
   el.querySelector('button').onclick=e=>{e.stopPropagation();fechar()};
   el.onclick=()=>{state.k='gov';state.uf=uf;sel();refreshAll();fechar()};
@@ -475,7 +499,7 @@ function renderChamp(d){
   el.className='champ on';
   el.innerHTML=`<div class="trophy">🏆</div><div class="t1">VITÓRIA DE</div><div class="nm">${l.nome}</div><div class="t2">${cargo} · 2º turno 2026</div>
     ${duo(l,loser)}
-    <div class="stats"><span><b>${pct(l.pct)}</b> dos votos válidos</span><span><b>${fmt(l.votos)}</b> votos</span><span>+<b>${fmt(dif)}</b> sobre ${loser?loser.nome:'o adversário'}</span><span>${apuracaoCompleta(d)||DEMO?'Apuração <b>100%</b>':'Eleição definida pelo TSE · apuração <b>'+pct(d.secPct,1)+'</b>'}</span></div>`;
+    <div class="stats"><span><b>${pct(l.pct)}</b> dos votos válidos</span><span><b>${fmt(l.votos)}</b> votos</span><span>+<b>${fmt(dif)}</b> sobre ${loser?loser.nome:'o adversário'}</span><span>${apuracaoCompleta(d)||DEMO?'Apuração <b>100%</b>':(l.eleito?'Eleito pelo TSE':'Matematicamente eleito (os votos restantes não mudam o resultado)')+' · apuração <b>'+pct(d.secPct,1)+'</b>'}</span></div>`;
   const key=state.k+state.uf+l.id;
   if(state.k==='pres'&&!splashSeen[key]){
     splashSeen[key]=1;
