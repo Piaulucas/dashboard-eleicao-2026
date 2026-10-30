@@ -2,6 +2,8 @@
 
 Dashboard interativo que acompanhou, em tempo real, a apuração do **1º e do 2º turno das eleições 2026**, lendo diretamente a **API oficial de divulgação de resultados do TSE**. Feito do zero, em um único arquivo, sem framework e sem build.
 
+A primeira versão surgiu em cerca de **10 minutos**, logo após o início da apuração, quando eu queria consultar os dados mais rapidamente do que conseguia acompanhar pela TV. Compartilhei o link com a família; ele circulou entre amigos e depois em um story no Instagram. O projeto cresceu com feedback de quem usou, incluindo o filtro por estados. Não havia analytics nessa versão, então não atribuo um número de visitantes a esse alcance.
+
 **Acesse:** https://piaulucas.github.io/dashboard-eleicao-2026/
 
 ![Tela de vitória](docs/01-tela-de-vitoria.jpg)
@@ -16,7 +18,7 @@ Dashboard interativo que acompanhou, em tempo real, a apuração do **1º e do 2
 
   ![1º turno](docs/04-primeiro-turno.jpg)
 
-- **Matematicamente eleito.** O resultado é declarado assim que se torna irreversível, sem esperar os 100%: a vantagem do líder é maior que todos os eleitores das seções ainda não totalizadas (2º turno) ou o líder garante mais da metade dos votos válidos possíveis (1º turno). Na Presidência: tela cheia com confete. Nos governos: aviso discreto no topo, mesmo com outra aba aberta, agrupado quando há vários eleitos.
+- **Matematicamente eleito.** O resultado é declarado assim que se torna irreversível, sem esperar os 100%: a vantagem do líder é maior que todos os eleitores das seções ainda não totalizadas (2º turno) ou o líder garante mais da metade dos votos válidos possíveis (1º turno). A regra só é usada quando o campo de eleitores restantes é válido. Na Presidência, o quadro de vitória oferece uma celebração com confete; nos governos, há aviso no topo, mesmo com outra aba aberta, agrupado quando há vários eleitos.
 - **Quadro do campeão**, com vencedor e derrotado:
 
   ![Quadro do campeão](docs/02-quadro-campeao.jpg)
@@ -50,12 +52,19 @@ A lista de eleições está em `/oficial/comum/config/ele-c.json`. O mapa usa a 
 ## Decisões técnicas e desafios
 
 - **API não documentada.** Descobri o formato lendo o JavaScript do site oficial e validei os números contra o próprio site do TSE e o Google.
-- **Dados defasados.** O TSE chegou a ficar mais de 1 hora sem publicar durante o 2º turno, e os arquivos por estado são publicados em momentos diferentes do total nacional. O dashboard mostra a hora de geração do dado (horário de Brasília) e avisa quando está defasado, em vez de fingir que está "ao vivo". Resultados já encerrados mostram "Totalização encerrada".
+- **Dados defasados.** O TSE chegou a ficar mais de 1 hora sem publicar durante o 2º turno, e os arquivos por estado são publicados em momentos diferentes do total nacional. O dashboard mostra a hora de geração do dado (horário de Brasília) e avisa quando está defasado, em vez de fingir que está "ao vivo". Se uma consulta falhar, preserva o último resultado, mas sinaliza o erro e os arquivos indisponíveis. Resultados já encerrados mostram "Totalização encerrada".
 - **Declarar o eleito antes do TSE.** Nos dados reais, o TSE só marcava "Eleito" no fim, mesmo com 98% a 99% apurado. A regra do "matematicamente eleito" considera o pior cenário (todos os eleitores restantes votando no adversário), portanto não é projeção estatística: não erra, só pode demorar um pouco mais que uma projeção. Ela não considera anulação de seções nem recontagem.
 - **Mapa sem biblioteca.** A malha do IBGE é projetada e desenhada em SVG puro, com cache local.
 - **Cores por partido** definidas por variáveis CSS, com variantes para o modo escuro. Quando dois candidatos da mesma disputa têm cores parecidas, quem não é PT nem PL passa para a cor secundária do partido ou para uma cor livre.
 - **Sem adivinhar gênero.** O arquivo do TSE não traz esse dado. Os candidatos a governador do 2º turno ganharam bonecos masculino e feminino a partir dos nomes registrados; os demais aparecem com um círculo com as iniciais.
 - **Cada turno é uma chave de estado** (`pres`, `gov`, `pres1`, `gov1`), o que permitiu reaproveitar toda a interface para disputas com 2 ou com dezenas de candidatos.
+
+## Limitações e leitura responsável
+
+- Os arquivos por UF e o total nacional podem ter horários diferentes. Compare a hora exibida antes de somar ou confrontar números.
+- A regra matemática usa os eleitores de seções ainda não totalizadas informados pelo TSE. Se esse campo faltar ou for inválido, o dashboard não declara um vencedor por cálculo próprio. Anulações, recontagens e retificações posteriores ainda podem alterar o resultado.
+- O histórico do gráfico e a seleção atual ficam apenas no navegador (`localStorage` e `sessionStorage`). O projeto não usa analytics nem envia dados do visitante a um serviço de observabilidade. Falhas de consulta são mostradas na página e registradas no console do navegador.
+- Mapa e tabela oferecem seleção por teclado; o gráfico tem um resumo textual para leitura em telas pequenas e por tecnologias assistivas.
 
 ## Tecnologias
 
@@ -77,6 +86,10 @@ Parâmetros de teste na URL:
 | `?t=1` | abre direto no 1º turno |
 | `?demo=fim` | simula 100% apurado (tela de vitória) |
 | `?demo=eleito` | simula governadores declarados eleitos (aviso no topo) |
+
+Para conferir os casos principais, abra o resultado nacional e uma UF, alterne entre turnos durante uma atualização e teste a seleção do mapa e a ordenação da tabela com Tab, Enter e Espaço. Abra a celebração pelo botão e feche com Escape: o foco deve voltar ao botão de origem. Se uma requisição falhar, a página deve indicar o arquivo indisponível sem apresentar dados antigos como se fossem novos.
+
+O deploy público usa GitHub Pages para servir o `index.html` estático, sem etapa de build. Antes de publicar uma alteração, confira os dados exibidos na página local e a resposta do site após a publicação.
 
 ## Estrutura
 
