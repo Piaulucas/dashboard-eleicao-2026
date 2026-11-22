@@ -70,6 +70,10 @@ A lista de eleições está em `/oficial/comum/config/ele-c.json`. O mapa usa a 
 
 HTML, CSS e JavaScript puros · SVG · API de resultados do TSE · API de malhas do IBGE · GitHub Pages.
 
+## Métricas de acesso
+
+As visitas são contadas pelo [GoatCounter](https://www.goatcounter.com), que não usa cookies nem guarda dados pessoais, por isso não há banner de consentimento. Acessos em `localhost` não entram na contagem.
+
 ## Como rodar
 
 É um único `index.html`:
